@@ -25,29 +25,39 @@ Copy your **User UID** — the iOS Shortcut needs it.
 
 ---
 
-## 3. iOS Shortcut (SMS → Ledger)
+## 3. iOS Shortcut (SMS → Ledger) — correct wiring
 
-Create a Shortcut that runs when you receive a bank SMS:
+Message automations use the **Message** variable, not typed "Shortcut Input".
 
-| Step | Action |
-|------|--------|
-| 1 | **Receive Message** trigger (filter by your bank sender if possible) |
-| 2 | **Get Contents of URL** |
-| 3 | URL | `https://YOUR-HOST/api/ingest` (your deployed Ledger server, or ngrok/tunnel for local dev) |
-| 4 | Method | `POST` |
-| 5 | Headers | `Content-Type` = `application/json` |
-| 6 | Headers | `x-service-key` = value from `.env` → `SUPABASE_SERVICE_ROLE_KEY` |
-| 7 | Request Body | JSON |
+### Actions (in order)
 
-**JSON body:**
-```json
-{
-  "user_id": "PASTE-YOUR-USER-UUID-HERE",
-  "raw_message": "Shortcut Input"
-}
-```
+| # | Action | Setting |
+|---|--------|---------|
+| 1 | **Text** | Tap field → select blue **Message** (from automation trigger) |
+| 2 | **Get Contents of URL** | See below |
 
-Set `raw_message` to the **Shortcut Input** variable (the SMS text).
+### Get Contents of URL
+
+| Field | Value |
+|-------|--------|
+| URL | `https://slilac5696iosledger-production.up.railway.app/api/ingest` |
+| Method | POST |
+| Headers | `Content-Type` = `application/json` |
+| Headers | `x-service-key` = your `SUPABASE_SERVICE_ROLE_KEY` |
+| Request Body | JSON |
+
+**JSON fields** (tap each value → pick variable, never type placeholder text):
+
+| Key | Value |
+|-----|--------|
+| `user_id` | Text: `655c1ad8-1ce2-48a1-95b4-2163fbfa70f4` |
+| `raw_message` | Select **Text** from step 1 (the action output pill) |
+
+### Alternative: Form body (easier on some iPhones)
+
+Request Body → **Form**:
+- `user_id` → your UUID (text)
+- `raw_message` → **Text** action from step 1
 
 ---
 

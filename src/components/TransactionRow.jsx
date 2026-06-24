@@ -28,7 +28,9 @@ export default function TransactionRow({ transaction, parsed, onDelete }) {
   }
 
   const unparsed = !parsed
-  const shortcutMiswired = transaction.raw_message?.trim() === 'Shortcut Input'
+  const shortcutMiswired =
+    transaction.raw_message?.trim() === 'Shortcut Input' ||
+    !transaction.raw_message?.includes('Transaction from')
 
   return (
     <div className="relative overflow-hidden group">
@@ -59,9 +61,11 @@ export default function TransactionRow({ transaction, parsed, onDelete }) {
               </p>
               {shortcutMiswired ? (
                 <p className="font-mono text-xs text-stone-600 leading-relaxed">
-                  The SMS text was not sent — only the words &quot;Shortcut Input&quot; were.
-                  In Shortcuts, tap the raw_message value and select the blue{' '}
-                  <strong>Shortcut Input</strong> variable, not typed text.
+                  SMS text was not sent correctly. In Shortcuts: add a{' '}
+                  <strong>Text</strong> action → tap it → pick the blue{' '}
+                  <strong>Message</strong> variable from the trigger (not typed text).
+                  Then use that <strong>Text</strong> as <code>raw_message</code> in Get
+                  Contents of URL.
                 </p>
               ) : (
                 <p className="font-mono text-xs text-stone-600 break-words">{transaction.raw_message}</p>

@@ -5,6 +5,33 @@ function getConfig() {
   }
 }
 
+const PLACEHOLDERS = new Set([
+  'shortcut input',
+  'message',
+  'sms',
+  'text',
+  'provided input',
+  'input',
+])
+
+function extractRawMessage(body) {
+  const raw =
+    body?.raw_message ??
+    body?.message ??
+    body?.text ??
+    body?.sms ??
+    body?.body
+  return typeof raw === 'string' ? raw.trim() : null
+}
+
+function isPlaceholderMessage(msg) {
+  if (!msg) return true
+  const lower = msg.toLowerCase().trim()
+  if (PLACEHOLDERS.has(lower)) return true
+  if (lower.startsWith('{{') && lower.endsWith('}}')) return true
+  return !lower.includes('Transaction from')
+}
+
 export default async function ingest(req, res) {
   const { supabaseUrl, serviceKey } = getConfig()
   const headerKey = req.headers['x-service-key']
@@ -12,9 +39,24 @@ export default async function ingest(req, res) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
-  const { user_id, raw_message } = req.body ?? {}
-  if (!user_id || !raw_message) {
-    return res.status(400).json({ error: 'Missing user_id or raw_message' })
+  const body = req.body ?? {}
+  const user_id = body.user_id ?? body.userId
+  const raw_message = extractRawMessage(body)
+
+  if (!user_id) {
+    return res.status(400).json({ error: 'Missing user_id' })
+  }
+  if (!raw_message) {
+    return res.status(400).json({
+      error:
+        'Missing SMS text. Send raw_message with the bank message body (use the Message variable in Shortcuts).',
+    })
+  }
+  if (isPlaceholderMessage(raw_message)) {
+    return res.status(400).json({
+      error:
+        'SMS text not wired correctly. In your Message automation, add a Text action with the Message variable, then use that Text as raw_message — do not type "Shortcut Input".',
+    })
   }
 
   if (!supabaseUrl) {
