@@ -66,7 +66,13 @@ export async function insertTransaction(token, userId, rawMessage) {
   return res.json()
 }
 
-export async function deleteTransaction(token, id) {
+export async function insertTransactions(token, userId, rawMessages) {
+  const results = []
+  for (const rawMessage of rawMessages) {
+    results.push(await insertTransaction(token, userId, rawMessage))
+  }
+  return results
+}
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/transactions?id=eq.${id}`,
     {

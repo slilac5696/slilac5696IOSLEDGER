@@ -5,6 +5,7 @@ import TrendChart from './components/TrendChart'
 import MerchantLedger from './components/MerchantLedger'
 import TransactionRow from './components/TransactionRow'
 import ManualAdd from './components/ManualAdd'
+import BulkImport from './components/BulkImport'
 import { parseMessage, parseTransactionDate } from './lib/parseMessage'
 import { fetchTransactions, deleteTransaction } from './lib/supabase'
 
@@ -191,6 +192,12 @@ export default function App() {
         <MerchantLedger merchants={topMerchants} currency={currency} />
 
         <ManualAdd
+          token={session.access_token}
+          userId={session.user.id}
+          onSaved={loadTransactions}
+        />
+
+        <BulkImport
           token={session.access_token}
           userId={session.user.id}
           onSaved={loadTransactions}

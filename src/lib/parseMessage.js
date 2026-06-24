@@ -26,3 +26,17 @@ export function parseTransactionDate(dateStr) {
 export function formatAmount(amount, currency = 'MVR') {
   return `${currency}${amount.toFixed(2)}`
 }
+
+/** Split pasted text into individual bank SMS messages. */
+export function splitBacklogMessages(text) {
+  if (!text?.trim()) return []
+  const parts = text
+    .split(/(?=Transaction from \d{4} on )/g)
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (parts.length > 1) return parts
+  return text
+    .split(/\n\s*\n/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
