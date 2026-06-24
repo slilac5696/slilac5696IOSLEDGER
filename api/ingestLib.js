@@ -7,11 +7,11 @@ function getConfig() {
 }
 
 function looksLikeBankSms(value) {
-  return (
-    typeof value === 'string' &&
-    value.trim().toLowerCase().includes('transaction from') &&
-    value.trim().length > 40
-  )
+  if (typeof value !== 'string') return false
+  const t = value.trim()
+  if (!t.toLowerCase().includes('transaction from') || t.length < 40) return false
+  if (/xxx/i.test(t)) return false
+  return /Transaction from \d{4} on \d{2}\/\d{2}\/\d{2}/.test(t)
 }
 
 function findBankSms(value, depth = 0) {
@@ -37,18 +37,26 @@ function findBankSms(value, depth = 0) {
 }
 
 export function extractSmsFromRequest(req) {
-  const raw =
-    typeof req.body === 'string'
-      ? req.body
-      : req.rawBody || ''
+  if (typeof req.body === 'string' && looksLikeBankSms(req.body)) {
+    return req.body.trim()
+  }
 
+  if (req.body && typeof req.body === 'object') {
+    for (const key of ['Text', 'text', 'raw_message', 'message', 'body', 'sms']) {
+      const val = req.body[key]
+      if (looksLikeBankSms(val)) return val.trim()
+    }
+    const fromObj = findBankSms(req.body)
+    if (fromObj) return fromObj
+  }
+
+  const raw = req.rawBody || ''
   if (looksLikeBankSms(raw)) return raw.trim()
 
   try {
-    const parsed = typeof req.body === 'object' ? req.body : JSON.parse(raw || '{}')
-    return findBankSms(parsed)
+    return findBankSms(JSON.parse(raw || '{}'))
   } catch {
-    return findBankSms(req.body)
+    return null
   }
 }
 

@@ -29,8 +29,9 @@ export default function TransactionRow({ transaction, parsed, onDelete }) {
 
   const unparsed = !parsed
   const shortcutMiswired =
-    transaction.raw_message?.trim() === 'Shortcut Input' ||
-    !transaction.raw_message?.includes('Transaction from')
+    !transaction.raw_message?.includes('Transaction from') ||
+    /xxx/i.test(transaction.raw_message || '') ||
+    !parsed
 
   return (
     <div className="relative overflow-hidden group">
@@ -61,11 +62,9 @@ export default function TransactionRow({ transaction, parsed, onDelete }) {
               </p>
               {shortcutMiswired ? (
                 <p className="font-mono text-xs text-stone-600 leading-relaxed">
-                  SMS text was not sent correctly. In Shortcuts: add a{' '}
-                  <strong>Text</strong> action → tap it → pick the blue{' '}
-                  <strong>Message</strong> variable from the trigger (not typed text).
-                  Then use that <strong>Text</strong> as <code>raw_message</code> in Get
-                  Contents of URL.
+                  This is a template or bad Shortcut wiring — not a real bank SMS.
+                  In Shortcuts: Text action must be only blue <strong>Shortcut Input</strong>.
+                  Request Body = <strong>Text</strong> (not Form). Delete this row after fixing.
                 </p>
               ) : (
                 <p className="font-mono text-xs text-stone-600 break-words">{transaction.raw_message}</p>

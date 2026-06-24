@@ -64,22 +64,36 @@ export default function ShortcutSetup({ token }) {
             </>
           )}
 
+          <div className="border border-orange-700 border-dashed p-3 bg-orange-50">
+            <p className="text-orange-800 font-medium uppercase tracking-wider mb-1">
+              Do not use a template
+            </p>
+            <p className="leading-relaxed text-orange-900">
+              Never type &quot;Transaction from xxx…&quot;. Use only the blue{' '}
+              <strong>Shortcut Input</strong> variable — the real SMS from your bank.
+            </p>
+          </div>
+
           <div className="border border-dotted border-stone-200 p-3 space-y-2">
             <p className="text-stone-500 uppercase tracking-wider">Shortcut steps</p>
             <ol className="list-decimal list-inside space-y-1 leading-relaxed">
               <li>Automation → Message → your bank sender</li>
               <li>
-                <strong>Text</strong> → blue <strong>Shortcut Input</strong>
+                <strong>Text</strong> → delete everything → tap field → pick blue{' '}
+                <strong>Shortcut Input</strong> only
               </li>
               <li>
                 <strong>Get Contents of URL</strong> → POST → paste URL above
               </li>
-              <li>Request Body → <strong>Text</strong> → pick Text from step 2</li>
               <li>
-                <strong>Show Notification</strong> → Contents of URL (see errors)
+                Request Body → <strong>Text</strong> (not Form, not JSON) → pick{' '}
+                <strong>Text</strong> from step 2
+              </li>
+              <li>Delete all Headers (leave empty)</li>
+              <li>
+                <strong>Show Notification</strong> → Contents of URL
               </li>
             </ol>
-            <p className="text-stone-500 mt-2">No headers. No JSON. No service key.</p>
           </div>
         </div>
       )}
