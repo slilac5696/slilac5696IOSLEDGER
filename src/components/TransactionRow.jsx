@@ -28,6 +28,7 @@ export default function TransactionRow({ transaction, parsed, onDelete }) {
   }
 
   const unparsed = !parsed
+  const shortcutMiswired = transaction.raw_message?.trim() === 'Shortcut Input'
 
   return (
     <div className="relative overflow-hidden group">
@@ -54,9 +55,17 @@ export default function TransactionRow({ transaction, parsed, onDelete }) {
           {unparsed ? (
             <div className="flex-1 min-w-0 pr-4">
               <p className="font-mono text-xs text-orange-700 uppercase tracking-wider mb-1">
-                Unparsed message
+                {shortcutMiswired ? 'Shortcut not wired correctly' : 'Unparsed message'}
               </p>
-              <p className="font-mono text-xs text-stone-600 break-words">{transaction.raw_message}</p>
+              {shortcutMiswired ? (
+                <p className="font-mono text-xs text-stone-600 leading-relaxed">
+                  The SMS text was not sent — only the words &quot;Shortcut Input&quot; were.
+                  In Shortcuts, tap the raw_message value and select the blue{' '}
+                  <strong>Shortcut Input</strong> variable, not typed text.
+                </p>
+              ) : (
+                <p className="font-mono text-xs text-stone-600 break-words">{transaction.raw_message}</p>
+              )}
             </div>
           ) : (
             <div className="flex-1 min-w-0 pr-4">
