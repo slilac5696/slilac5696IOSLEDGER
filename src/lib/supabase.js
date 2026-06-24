@@ -1,6 +1,14 @@
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
+function assertConfig() {
+  if (!SUPABASE_URL || !ANON_KEY) {
+    throw new Error(
+      'App not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Railway, then redeploy.'
+    )
+  }
+}
+
 function headers(token, extra = {}) {
   return {
     apikey: ANON_KEY,
@@ -10,6 +18,7 @@ function headers(token, extra = {}) {
 }
 
 export async function login(email, password) {
+  assertConfig()
   const res = await fetch(
     `${SUPABASE_URL}/auth/v1/token?grant_type=password`,
     {

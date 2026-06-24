@@ -10,9 +10,18 @@ export default function LoginScreen({ onLogin }) {
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+
+    const trimmedEmail = email.trim()
+    const trimmedPassword = password.trim()
+
+    if (!trimmedEmail || !trimmedPassword) {
+      setError('Email and password are required.')
+      return
+    }
+
     setLoading(true)
     try {
-      const session = await login(email, password)
+      const session = await login(trimmedEmail, trimmedPassword)
       onLogin(session)
     } catch (err) {
       setError(err.message)
@@ -34,14 +43,17 @@ export default function LoginScreen({ onLogin }) {
           </p>
         </header>
 
-        <form onSubmit={handleSubmit} className="border border-dashed border-stone-200 p-6">
+        <form onSubmit={handleSubmit} noValidate className="border border-dashed border-stone-200 p-6">
           <label className="block mb-4">
             <span className="font-mono text-xs uppercase tracking-wider text-stone-500">Email</span>
             <input
-              type="email"
+              type="text"
+              inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required
               autoComplete="email"
               className="mt-1 w-full bg-transparent border-b border-stone-200 py-2 font-mono text-sm text-stone-900 focus:outline-none focus:border-teal-800"
             />
@@ -53,7 +65,6 @@ export default function LoginScreen({ onLogin }) {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              required
               autoComplete="current-password"
               className="mt-1 w-full bg-transparent border-b border-stone-200 py-2 font-mono text-sm text-stone-900 focus:outline-none focus:border-teal-800"
             />
