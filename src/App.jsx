@@ -6,6 +6,7 @@ import MerchantLedger from './components/MerchantLedger'
 import TransactionRow from './components/TransactionRow'
 import ManualAdd from './components/ManualAdd'
 import BulkImport from './components/BulkImport'
+import ShortcutSetup from './components/ShortcutSetup'
 import { parseMessage, parseTransactionDate } from './lib/parseMessage'
 import { fetchTransactions, deleteTransaction } from './lib/supabase'
 
@@ -197,6 +198,8 @@ export default function App() {
         <Hero total={monthTotal} changePercent={changePercent} currency={currency} />
         <TrendChart data={dailyData} />
         <MerchantLedger merchants={topMerchants} currency={currency} />
+
+        <ShortcutSetup token={session.access_token} />
 
         <ManualAdd
           token={session.access_token}

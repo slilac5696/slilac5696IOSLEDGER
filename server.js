@@ -5,6 +5,8 @@ import { existsSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import ingestHandler from './api/ingest.js'
+import ingestByToken from './api/ingestByToken.js'
+import myIngestUrl from './api/myIngestUrl.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const distIndex = join(__dirname, 'dist', 'index.html')
@@ -26,6 +28,8 @@ app.use(express.urlencoded({ extended: true }))
 app.use(express.text({ type: ['text/*', 'application/octet-stream'] }))
 
 app.post('/api/ingest', ingestHandler)
+app.post('/api/i/:token', ingestByToken)
+app.get('/api/my-ingest-url', myIngestUrl)
 
 if (isProd) {
   app.use(express.static(join(__dirname, 'dist')))
