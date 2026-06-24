@@ -1,0 +1,8 @@
+# Supabase project config
+project_id = "ezebgtcajtvypgovfbph"
+
+[api]
+enabled = true
+
+[db]
+major_version = 15
