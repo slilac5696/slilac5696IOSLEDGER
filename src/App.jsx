@@ -162,7 +162,14 @@ export default function App() {
             Sign out
           </button>
           <h1 className="font-display text-lg text-teal-800">Ledger</h1>
-          <div className="w-14" />
+          <button
+            type="button"
+            onClick={loadTransactions}
+            disabled={loading}
+            className="font-mono text-xs text-teal-800 uppercase tracking-wider disabled:opacity-40"
+          >
+            {loading ? '…' : 'Refresh'}
+          </button>
         </header>
 
         <nav className="flex items-center justify-between px-4 py-3 border-b border-dashed border-stone-200">

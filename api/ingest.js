@@ -15,13 +15,19 @@ const PLACEHOLDERS = new Set([
 ])
 
 function extractRawMessage(body) {
-  const raw =
-    body?.raw_message ??
-    body?.message ??
-    body?.text ??
-    body?.sms ??
-    body?.body
-  return typeof raw === 'string' ? raw.trim() : null
+  if (!body || typeof body !== 'object') return null
+
+  const candidates = [body.raw_message, body.sms, body.body, body.text, body.message]
+    .filter((v) => typeof v === 'string')
+    .map((v) => v.trim())
+    .filter(Boolean)
+
+  const bankSms = candidates.find(
+    (c) => c.toLowerCase().includes('transaction from') && c.length > 40
+  )
+  if (bankSms) return bankSms
+
+  return candidates[0] ?? null
 }
 
 function isPlaceholderMessage(msg) {
