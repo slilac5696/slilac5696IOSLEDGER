@@ -15,7 +15,15 @@ const HOST = process.env.HOST || '0.0.0.0'
 
 const app = express()
 app.use(cors())
-app.use(express.json())
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      req.rawBody = buf?.length ? buf.toString('utf8') : ''
+    },
+  })
+)
+app.use(express.urlencoded({ extended: true }))
+app.use(express.text({ type: ['text/*', 'application/octet-stream'] }))
 
 app.post('/api/ingest', ingestHandler)
 

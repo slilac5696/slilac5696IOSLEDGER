@@ -14,20 +14,79 @@ const PLACEHOLDERS = new Set([
   'input',
 ])
 
-function extractRawMessage(body) {
-  if (!body || typeof body !== 'object') return null
-
-  const candidates = [body.raw_message, body.sms, body.body, body.text, body.message]
-    .filter((v) => typeof v === 'string')
-    .map((v) => v.trim())
-    .filter(Boolean)
-
-  const bankSms = candidates.find(
-    (c) => c.toLowerCase().includes('transaction from') && c.length > 40
+function looksLikeBankSms(value) {
+  return (
+    typeof value === 'string' &&
+    value.trim().toLowerCase().includes('transaction from') &&
+    value.trim().length > 40
   )
-  if (bankSms) return bankSms
+}
 
-  return candidates[0] ?? null
+function findBankSms(value, depth = 0) {
+  if (depth > 6 || value == null) return null
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    return looksLikeBankSms(trimmed) ? trimmed : null
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findBankSms(item, depth + 1)
+      if (found) return found
+    }
+    return null
+  }
+
+  if (typeof value === 'object') {
+    for (const v of Object.values(value)) {
+      const found = findBankSms(v, depth + 1)
+      if (found) return found
+    }
+  }
+
+  return null
+}
+
+function extractUserId(body, query) {
+  const id = query?.user_id ?? body?.user_id ?? body?.userId
+  return typeof id === 'string' ? id.trim() : null
+}
+
+function extractRawMessage(body, rawBody) {
+  if (typeof rawBody === 'string' && rawBody.trim()) {
+    const trimmed = rawBody.trim()
+    if (looksLikeBankSms(trimmed)) return trimmed
+    try {
+      const parsed = JSON.parse(trimmed)
+      const fromJson = findBankSms(parsed)
+      if (fromJson) return fromJson
+    } catch {
+      // not JSON
+    }
+  }
+
+  if (body && typeof body === 'object') {
+    const fromBody = findBankSms(body)
+    if (fromBody) return fromBody
+
+    const candidates = [
+      body.raw_message,
+      body.rawMessage,
+      body.sms,
+      body.body,
+      body.content,
+      body.text,
+      body.message,
+    ]
+      .filter((v) => typeof v === 'string')
+      .map((v) => v.trim())
+      .filter(Boolean)
+
+    return candidates[0] ?? null
+  }
+
+  return null
 }
 
 function isPlaceholderMessage(msg) {
@@ -35,7 +94,7 @@ function isPlaceholderMessage(msg) {
   const lower = msg.toLowerCase().trim()
   if (PLACEHOLDERS.has(lower)) return true
   if (lower.startsWith('{{') && lower.endsWith('}}')) return true
-  return !lower.includes('Transaction from')
+  return !lower.includes('transaction from')
 }
 
 export default async function ingest(req, res) {
@@ -45,23 +104,31 @@ export default async function ingest(req, res) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
-  const body = req.body ?? {}
-  const user_id = body.user_id ?? body.userId
-  const raw_message = extractRawMessage(body)
+  const user_id = extractUserId(
+    typeof req.body === 'object' ? req.body : {},
+    req.query
+  )
+  const raw_message = extractRawMessage(
+    typeof req.body === 'object' ? req.body : {},
+    typeof req.body === 'string' ? req.body : req.rawBody
+  )
 
   if (!user_id) {
-    return res.status(400).json({ error: 'Missing user_id' })
+    return res.status(400).json({
+      error:
+        'Missing user_id. Add it in JSON/Form body, or append ?user_id=YOUR-UUID to the URL.',
+    })
   }
   if (!raw_message) {
     return res.status(400).json({
       error:
-        'Missing SMS text. Send raw_message with the bank message body (use the Message variable in Shortcuts).',
+        'Missing SMS text. Easiest fix: set URL to .../api/ingest?user_id=YOUR-UUID, Request Body = Text (bank SMS), Content-Type = text/plain.',
     })
   }
   if (isPlaceholderMessage(raw_message)) {
     return res.status(400).json({
       error:
-        'SMS text not wired correctly. In your Message automation, add a Text action with the Message variable, then use that Text as raw_message — do not type "Shortcut Input".',
+        'SMS text not wired correctly. Add a Text action with the Message variable, then use that Text as the request body.',
     })
   }
 

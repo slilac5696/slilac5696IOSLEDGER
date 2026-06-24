@@ -36,28 +36,22 @@ Message automations use the **Message** variable, not typed "Shortcut Input".
 | 1 | **Text** | Tap field → select blue **Message** (from automation trigger) |
 | 2 | **Get Contents of URL** | See below |
 
-### Get Contents of URL
+### Easiest setup (recommended) — plain text body
 
 | Field | Value |
 |-------|--------|
-| URL | `https://slilac5696iosledger-production.up.railway.app/api/ingest` |
-| Method | POST |
-| Headers | `Content-Type` = `application/json` |
-| Headers | `x-service-key` = your `SUPABASE_SERVICE_ROLE_KEY` |
-| Request Body | JSON |
+| **URL** | `https://slilac5696iosledger-production.up.railway.app/api/ingest?user_id=655c1ad8-1ce2-48a1-95b4-2163fbfa70f4` |
+| **Method** | POST |
+| **Headers** | `x-service-key` → your service role key |
+| **Headers** | `Content-Type` → `text/plain` |
+| **Request Body** | **Text** (not JSON) → pick **Text** action with **Message** variable |
 
-**JSON fields** (tap each value → pick variable, never type placeholder text):
+Actions in order:
+1. **Text** → tap field → blue **Message** variable
+2. **Get Contents of URL** → settings above
+3. **Show Notification** → body = Contents of URL (see success/errors)
 
-| Key | Value |
-|-----|--------|
-| `user_id` | Text: `655c1ad8-1ce2-48a1-95b4-2163fbfa70f4` |
-| `raw_message` | Select **Text** from step 1 (the action output pill) |
-
-### Alternative: Form body (easier on some iPhones)
-
-Request Body → **Form**:
-- `user_id` → your UUID (text)
-- `raw_message` → **Text** action from step 1
+### Alternative — JSON body
 
 ---
 
