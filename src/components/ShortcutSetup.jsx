@@ -86,8 +86,13 @@ export default function ShortcutSetup({ token }) {
                 <strong>Get Contents of URL</strong> → POST → paste URL above
               </li>
               <li>
-                Request Body → <strong>Text</strong> (not Form, not JSON) → pick{' '}
-                <strong>Text</strong> from step 2
+                Request Body → <strong>Form</strong> → Key:{' '}
+                <code className="text-stone-800">raw_message</code> → Value: pick{' '}
+                <strong>Text</strong> from step 2 (blue pill)
+              </li>
+              <li className="text-stone-500">
+                (If Form unavailable, use JSON with key <code>raw_message</code> →
+                Text from step 2)
               </li>
               <li>Delete all Headers (leave empty)</li>
               <li>
