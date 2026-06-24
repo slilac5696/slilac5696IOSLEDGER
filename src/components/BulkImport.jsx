@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { parseMessage, splitBacklogMessages } from '../lib/parseMessage'
 import { insertTransactions } from '../lib/supabase'
 
-export default function BulkImport({ token, userId, onSaved }) {
+export default function BulkImport({ token, userId, onSaved, embedded = false }) {
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
   const [saving, setSaving] = useState(false)
@@ -40,6 +40,62 @@ export default function BulkImport({ token, userId, onSaved }) {
     }
   }
 
+  const form = (
+    <form onSubmit={handleImport}>
+      <p className="font-mono text-xs text-stone-400 mb-3 leading-relaxed">
+        Paste old bank SMS messages from Messages. Each must start with &quot;Transaction from…&quot;
+      </p>
+
+      <textarea
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value)
+          setResult(null)
+        }}
+        placeholder={'Transaction from 4172 on 21/06/26 at 19:13:35 for MVR351.10 at OLIVE TREE MARKET MA was processed...'}
+        rows={6}
+        className="w-full border border-stone-200 bg-white p-3 font-mono text-xs text-stone-800 focus:outline-none focus:border-teal-800 resize-none rounded-sm"
+      />
+
+      {messages.length > 0 && (
+        <div className="mt-3 p-3 border border-dotted border-stone-200 font-mono text-xs bg-stone-50">
+          <p className="text-stone-400 uppercase tracking-wider text-[10px] mb-2">Preview</p>
+          <p className="text-stone-800">
+            {messages.length} message{messages.length !== 1 ? 's' : ''} · {parsedCount} will parse
+          </p>
+          {unparsedCount > 0 && (
+            <p className="text-orange-700 mt-1">{unparsedCount} unparsed</p>
+          )}
+        </div>
+      )}
+
+      {result && (
+        <p className="font-mono text-xs text-emerald-700 mt-2">
+          Imported {result.imported} transaction{result.imported !== 1 ? 's' : ''}.
+        </p>
+      )}
+
+      {error && <p className="font-mono text-xs text-orange-700 mt-2">{error}</p>}
+
+      <button
+        type="submit"
+        disabled={saving || !messages.length}
+        className="mt-4 w-full py-3 bg-teal-800 text-white font-mono text-xs uppercase tracking-wider disabled:opacity-40"
+      >
+        {saving ? 'Importing…' : `Import ${messages.length || ''} transaction${messages.length !== 1 ? 's' : ''}`}
+      </button>
+    </form>
+  )
+
+  if (embedded) {
+    return (
+      <div>
+        <h2 className="font-display text-lg text-stone-900 mb-3">Import SMS backlog</h2>
+        {form}
+      </div>
+    )
+  }
+
   return (
     <section className="border-b border-dashed border-stone-200">
       <button
@@ -50,71 +106,7 @@ export default function BulkImport({ token, userId, onSaved }) {
         <span>Import SMS backlog</span>
         <span>{open ? '−' : '+'}</span>
       </button>
-
-      {open && (
-        <form onSubmit={handleImport} className="px-4 pb-4">
-          <p className="font-mono text-xs text-stone-500 mb-2 leading-relaxed">
-            Paste old bank SMS messages from Messages. One per line block, or many in
-            one paste — each must start with &quot;Transaction from…&quot;
-          </p>
-
-          <textarea
-            value={text}
-            onChange={(e) => {
-              setText(e.target.value)
-              setResult(null)
-            }}
-            placeholder={'Transaction from 4172 on 21/06/26 at 19:13:35 for MVR351.10 at OLIVE TREE MARKET MA was processed...\n\nTransaction from 4172 on 20/06/26 at 12:00:00 for MVR50.00 at COFFEE SHOP was processed...'}
-            rows={8}
-            className="w-full border border-dashed border-stone-200 bg-transparent p-3 font-mono text-xs text-stone-800 focus:outline-none focus:border-teal-800 resize-none"
-          />
-
-          {messages.length > 0 && (
-            <div className="mt-3 p-3 border border-dotted border-stone-200 font-mono text-xs">
-              <p className="text-stone-500 uppercase tracking-wider mb-2">Preview</p>
-              <p className="text-stone-800">
-                {messages.length} message{messages.length !== 1 ? 's' : ''} found
-              </p>
-              <p className="text-emerald-700 mt-1">{parsedCount} will parse</p>
-              {unparsedCount > 0 && (
-                <p className="text-orange-700 mt-1">
-                  {unparsedCount} unparsed (saved as raw text)
-                </p>
-              )}
-              <ul className="mt-2 space-y-1 max-h-32 overflow-y-auto text-stone-600">
-                {preview.slice(0, 10).map((p, i) => (
-                  <li key={i} className="truncate">
-                    {p.parsed
-                      ? `${p.parsed.date} · ${p.parsed.merchant} · ${p.parsed.currency}${p.parsed.amount.toFixed(2)}`
-                      : `⚠ ${p.raw.slice(0, 50)}…`}
-                  </li>
-                ))}
-                {preview.length > 10 && (
-                  <li className="text-stone-400">+{preview.length - 10} more</li>
-                )}
-              </ul>
-            </div>
-          )}
-
-          {result && (
-            <p className="font-mono text-xs text-emerald-700 mt-2">
-              Imported {result.imported} transaction{result.imported !== 1 ? 's' : ''}.
-            </p>
-          )}
-
-          {error && (
-            <p className="font-mono text-xs text-orange-700 mt-2">{error}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={saving || !messages.length}
-            className="mt-3 w-full py-2 border border-teal-800 text-teal-800 font-mono text-xs uppercase tracking-wider disabled:opacity-40"
-          >
-            {saving ? 'Importing…' : `Import ${messages.length || ''} transaction${messages.length !== 1 ? 's' : ''}`}
-          </button>
-        </form>
-      )}
+      {open && <div className="px-4 pb-4">{form}</div>}
     </section>
   )
 }

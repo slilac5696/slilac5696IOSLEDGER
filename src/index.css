@@ -22,8 +22,19 @@
   font-family: var(--font-mono);
 }
 
-.perforation {
-  background-image: radial-gradient(circle, #d6d3d1 1px, transparent 1px);
-  background-size: 8px 8px;
-  background-position: center;
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

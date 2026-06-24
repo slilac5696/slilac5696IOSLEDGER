@@ -1,4 +1,5 @@
 import { formatAmount } from '../lib/parseMessage'
+import SectionLabel from './SectionLabel'
 
 function LeaderLine() {
   return (
@@ -13,11 +14,9 @@ export default function MerchantLedger({ merchants, currency }) {
   if (!merchants.length) return null
 
   return (
-    <section className="px-4 py-4 border-b border-dashed border-stone-200">
-      <p className="font-mono text-xs uppercase tracking-widest text-stone-500 mb-3">
-        Top merchants
-      </p>
-      <ol className="space-y-2">
+    <section className="pb-2">
+      <SectionLabel>Top merchants</SectionLabel>
+      <ol className="px-4 space-y-2 pt-1">
         {merchants.map((m, i) => (
           <li key={m.name} className="flex items-baseline text-sm">
             <span className="font-mono text-xs text-stone-400 w-4">{i + 1}</span>

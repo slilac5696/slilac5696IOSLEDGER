@@ -1,12 +1,16 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { Settings, Plus } from 'lucide-react'
 import LoginScreen from './components/LoginScreen'
 import Hero from './components/Hero'
 import TrendChart from './components/TrendChart'
 import MerchantLedger from './components/MerchantLedger'
 import TransactionRow from './components/TransactionRow'
 import ManualAdd from './components/ManualAdd'
-import BulkImport from './components/BulkImport'
-import ShortcutSetup from './components/ShortcutSetup'
+import EmptyState from './components/EmptyState'
+import PullToRefresh from './components/PullToRefresh'
+import SettingsSheet from './components/SettingsSheet'
+import BottomSheet from './components/BottomSheet'
+import SectionLabel from './components/SectionLabel'
 import { parseMessage, parseTransactionDate } from './lib/parseMessage'
 import { fetchTransactions, deleteTransaction } from './lib/supabase'
 
@@ -14,10 +18,6 @@ function enrichTransaction(tx) {
   const parsed = parseMessage(tx.raw_message)
   const txDate = parsed ? parseTransactionDate(parsed.date) : new Date(tx.received_at)
   return { ...tx, parsed, txDate }
-}
-
-function monthKey(date) {
-  return `${date.getFullYear()}-${date.getMonth()}`
 }
 
 function monthLabel(year, month) {
@@ -31,6 +31,8 @@ export default function App() {
   const [session, setSession] = useState(null)
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
   const [now] = useState(() => new Date())
   const [viewYear, setViewYear] = useState(now.getFullYear())
   const [viewMonth, setViewMonth] = useState(now.getMonth())
@@ -104,7 +106,7 @@ export default function App() {
       const day = tx.txDate.getDate()
       buckets[day - 1].spend += tx.parsed.amount
     }
-    return buckets.filter((_, i) => i < daysInMonth)
+    return buckets
   }, [monthTransactions, viewYear, viewMonth])
 
   const topMerchants = useMemo(() => {
@@ -152,92 +154,81 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-dvh bg-stone-50">
-      <div className="max-w-md mx-auto border-x border-stone-200 min-h-dvh">
-        <header className="sticky top-0 z-10 bg-stone-50 border-b border-dashed border-stone-200 px-4 py-3 flex items-center justify-between">
+    <div className="min-h-dvh bg-stone-50 flex flex-col">
+      <div className="max-w-md mx-auto w-full flex flex-col min-h-dvh relative">
+        <header className="sticky top-0 z-20 bg-stone-50/95 backdrop-blur-sm px-4 py-3 flex items-center justify-center">
+          <h1 className="font-display text-lg text-stone-900">Ledger</h1>
           <button
             type="button"
-            onClick={() => setSession(null)}
-            className="font-mono text-xs text-stone-400 uppercase tracking-wider"
+            onClick={() => setSettingsOpen(true)}
+            className="absolute right-4 p-1 text-stone-600"
+            aria-label="Settings"
           >
-            Sign out
-          </button>
-          <h1 className="font-display text-lg text-teal-800">Ledger</h1>
-          <button
-            type="button"
-            onClick={loadTransactions}
-            disabled={loading}
-            className="font-mono text-xs text-teal-800 uppercase tracking-wider disabled:opacity-40"
-          >
-            {loading ? '…' : 'Refresh'}
+            <Settings size={22} strokeWidth={1.5} />
           </button>
         </header>
 
-        <nav className="flex items-center justify-between px-4 py-3 border-b border-dashed border-stone-200">
-          <button
-            type="button"
-            onClick={prevMonth}
-            className="font-mono text-teal-800 text-lg px-2"
-            aria-label="Previous month"
-          >
-            ←
-          </button>
-          <span className="font-display text-base text-stone-900">
-            {monthLabel(viewYear, viewMonth)}
-          </span>
-          <button
-            type="button"
-            onClick={nextMonth}
-            className="font-mono text-teal-800 text-lg px-2"
-            aria-label="Next month"
-          >
-            →
-          </button>
-        </nav>
+        <PullToRefresh onRefresh={loadTransactions} refreshing={loading}>
+          <Hero
+            total={monthTotal}
+            changePercent={changePercent}
+            currency={currency}
+            monthLabel={monthLabel(viewYear, viewMonth)}
+            viewYear={viewYear}
+            viewMonth={viewMonth}
+            onPrevMonth={prevMonth}
+            onNextMonth={nextMonth}
+          />
 
-        <Hero total={monthTotal} changePercent={changePercent} currency={currency} />
-        <TrendChart data={dailyData} />
-        <MerchantLedger merchants={topMerchants} currency={currency} />
+          <TrendChart data={dailyData} />
+          <MerchantLedger merchants={topMerchants} currency={currency} />
 
-        <ShortcutSetup token={session.access_token} />
-
-        <ManualAdd
-          token={session.access_token}
-          userId={session.user.id}
-          onSaved={loadTransactions}
-        />
-
-        <BulkImport
-          token={session.access_token}
-          userId={session.user.id}
-          onSaved={loadTransactions}
-        />
-
-        <div
-          className="h-3 perforation"
-          aria-hidden
-        />
-
-        <section>
           {loading && transactions.length === 0 ? (
-            <p className="px-4 py-8 font-mono text-xs text-stone-400 text-center">
-              Loading…
-            </p>
+            <p className="px-4 py-12 font-mono text-xs text-stone-400 text-center">Loading…</p>
           ) : monthTransactions.length === 0 ? (
-            <p className="px-4 py-8 font-mono text-xs text-stone-400 text-center">
-              No transactions this month
-            </p>
+            <EmptyState onAddManual={() => setAddOpen(true)} />
           ) : (
-            monthTransactions.map((tx) => (
-              <TransactionRow
-                key={tx.id}
-                transaction={tx}
-                parsed={tx.parsed}
-                onDelete={handleDelete}
-              />
-            ))
+            <section className="pb-24">
+              <SectionLabel>Transactions</SectionLabel>
+              {monthTransactions.map((tx) => (
+                <TransactionRow
+                  key={tx.id}
+                  transaction={tx}
+                  parsed={tx.parsed}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </section>
           )}
-        </section>
+        </PullToRefresh>
+
+        <button
+          type="button"
+          onClick={() => setAddOpen(true)}
+          className="absolute bottom-6 right-6 z-30 w-14 h-14 rounded-full bg-teal-800 text-white shadow-lg flex items-center justify-center"
+          aria-label="Add transaction"
+        >
+          <Plus size={24} strokeWidth={1.5} />
+        </button>
+
+        <SettingsSheet
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          token={session.access_token}
+          userId={session.user.id}
+          onSaved={loadTransactions}
+          onSignOut={() => setSession(null)}
+        />
+
+        <BottomSheet open={addOpen} onClose={() => setAddOpen(false)}>
+          <ManualAdd
+            token={session.access_token}
+            userId={session.user.id}
+            onSaved={loadTransactions}
+            onClose={() => setAddOpen(false)}
+            embedded
+          />
+        </BottomSheet>
       </div>
     </div>
   )
