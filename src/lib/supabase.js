@@ -73,6 +73,8 @@ export async function insertTransactions(token, userId, rawMessages) {
   }
   return results
 }
+
+export async function deleteTransaction(token, id) {
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/transactions?id=eq.${id}`,
     {
