@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 
-export default function ShortcutSetup({ token, embedded = false }) {
-  const [open, setOpen] = useState(embedded)
-  const [webhookUrl, setWebhookUrl] = useState('')
-  const [error, setError] = useState('')
+export default function ShortcutSetup({ token, webhookUrl: webhookUrlProp, error: errorProp, onCopy, copied: copiedProp }) {
+  const [webhookUrl, setWebhookUrl] = useState(webhookUrlProp || '')
+  const [error, setError] = useState(errorProp || '')
   const [copied, setCopied] = useState(false)
 
+  const urlControlled = webhookUrlProp !== undefined
+
   useEffect(() => {
-    if ((!open && !embedded) || !token) return
+    if (urlControlled || !token) return
     fetch('/api/my-ingest-url', {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -17,9 +18,21 @@ export default function ShortcutSetup({ token, embedded = false }) {
         else setError(data.error || 'Could not load webhook URL')
       })
       .catch(() => setError('Could not load webhook URL'))
-  }, [open, embedded, token])
+  }, [token, urlControlled])
+
+  useEffect(() => {
+    if (webhookUrlProp) setWebhookUrl(webhookUrlProp)
+  }, [webhookUrlProp])
+
+  useEffect(() => {
+    if (errorProp) setError(errorProp)
+  }, [errorProp])
 
   async function copyUrl() {
+    if (onCopy) {
+      onCopy()
+      return
+    }
     try {
       await navigator.clipboard.writeText(webhookUrl)
       setCopied(true)
@@ -29,7 +42,9 @@ export default function ShortcutSetup({ token, embedded = false }) {
     }
   }
 
-  const content = (
+  const isCopied = copiedProp ?? copied
+
+  return (
     <div className="font-mono text-xs text-stone-600 space-y-3">
       <p className="leading-relaxed text-stone-500">
         Copy your personal URL. No passwords or headers needed in Shortcuts.
@@ -48,7 +63,7 @@ export default function ShortcutSetup({ token, embedded = false }) {
             onClick={copyUrl}
             className="w-full py-2.5 bg-teal-800 text-white uppercase tracking-wider text-[11px]"
           >
-            {copied ? 'Copied!' : 'Copy URL'}
+            {isCopied ? 'Copied!' : 'Copy URL'}
           </button>
         </>
       )}
@@ -79,28 +94,5 @@ export default function ShortcutSetup({ token, embedded = false }) {
         </li>
       </ol>
     </div>
-  )
-
-  if (embedded) {
-    return (
-      <div>
-        <h2 className="font-display text-lg text-stone-900 mb-3">iPhone Shortcut setup</h2>
-        {content}
-      </div>
-    )
-  }
-
-  return (
-    <section className="border-b border-dashed border-stone-200">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="w-full px-4 py-3 flex items-center justify-between font-mono text-xs uppercase tracking-widest text-teal-800"
-      >
-        <span>iPhone Shortcut setup</span>
-        <span>{open ? '−' : '+'}</span>
-      </button>
-      {open && <div className="px-4 pb-4">{content}</div>}
-    </section>
   )
 }

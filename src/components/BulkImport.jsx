@@ -2,8 +2,7 @@ import { useState, useMemo } from 'react'
 import { parseMessage, splitBacklogMessages } from '../lib/parseMessage'
 import { insertTransactions } from '../lib/supabase'
 
-export default function BulkImport({ token, userId, onSaved, embedded = false }) {
-  const [open, setOpen] = useState(false)
+export default function BulkImport({ token, userId, onSaved }) {
   const [text, setText] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -40,7 +39,7 @@ export default function BulkImport({ token, userId, onSaved, embedded = false })
     }
   }
 
-  const form = (
+  return (
     <form onSubmit={handleImport}>
       <p className="font-mono text-xs text-stone-400 mb-3 leading-relaxed">
         Paste old bank SMS messages from Messages. Each must start with &quot;Transaction from…&quot;
@@ -85,28 +84,5 @@ export default function BulkImport({ token, userId, onSaved, embedded = false })
         {saving ? 'Importing…' : `Import ${messages.length || ''} transaction${messages.length !== 1 ? 's' : ''}`}
       </button>
     </form>
-  )
-
-  if (embedded) {
-    return (
-      <div>
-        <h2 className="font-display text-lg text-stone-900 mb-3">Import SMS backlog</h2>
-        {form}
-      </div>
-    )
-  }
-
-  return (
-    <section className="border-b border-dashed border-stone-200">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="w-full px-4 py-3 flex items-center justify-between font-mono text-xs uppercase tracking-widest text-teal-800"
-      >
-        <span>Import SMS backlog</span>
-        <span>{open ? '−' : '+'}</span>
-      </button>
-      {open && <div className="px-4 pb-4">{form}</div>}
-    </section>
   )
 }
