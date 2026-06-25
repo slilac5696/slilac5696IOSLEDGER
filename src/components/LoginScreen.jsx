@@ -140,7 +140,6 @@ export default function LoginScreen({ onLogin }) {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
-              placeholder="e.g. slilac"
               className="mt-1 w-full bg-transparent border-b border-stone-200 py-2 font-mono text-sm text-stone-900 focus:outline-none focus:border-teal-800"
             />
           </label>
