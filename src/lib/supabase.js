@@ -1,6 +1,12 @@
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
+import {
+  resolveAuthEmail,
+  isValidUsername,
+  isValidPassword,
+} from './auth.js'
+
 function assertConfig() {
   if (!SUPABASE_URL || !ANON_KEY) {
     throw new Error(
@@ -17,8 +23,9 @@ function headers(token, extra = {}) {
   }
 }
 
-export async function login(email, password) {
+export async function login(emailOrUsername, password) {
   assertConfig()
+  const email = resolveAuthEmail(emailOrUsername)
   const res = await fetch(
     `${SUPABASE_URL}/auth/v1/token?grant_type=password`,
     {
@@ -34,6 +41,30 @@ export async function login(email, password) {
   const data = await res.json()
   if (!res.ok) throw new Error(data.error_description || data.msg || 'Login failed')
   return data
+}
+
+export async function signUp(username, password) {
+  assertConfig()
+  if (!isValidUsername(username) && !username.includes('@')) {
+    throw new Error('Username must be 3–32 characters: letters, numbers, underscore only.')
+  }
+  if (!isValidPassword(password)) {
+    throw new Error('Password must be at least 6 characters.')
+  }
+
+  const res = await fetch('/api/signup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: username.trim(), password }),
+  })
+
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Sign up failed')
+
+  if (data.access_token) return data
+
+  const session = await login(username, password)
+  return session
 }
 
 export async function fetchTransactions(token) {
