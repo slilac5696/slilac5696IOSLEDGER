@@ -2,6 +2,7 @@ import {
   extractSmsFromRequest,
   lookupUserByToken,
   saveTransaction,
+  looksLikeBankSms,
 } from './ingestLib.js'
 
 export default async function ingestByToken(req, res) {
@@ -17,7 +18,7 @@ export default async function ingestByToken(req, res) {
         'Missing SMS text. Request body must be the bank message (use Text action with Shortcut Input).',
     })
   }
-  if (!raw_message.toLowerCase().includes('transaction from')) {
+  if (!looksLikeBankSms(raw_message)) {
     return res.status(400).json({ error: 'Body does not look like a bank SMS.' })
   }
 

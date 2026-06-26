@@ -1,17 +1,13 @@
+import { parseMessage, matchCategory, looksLikeBankSms } from '../src/lib/parseMessage.js'
+
+export { looksLikeBankSms }
+
 function getConfig() {
   return {
     supabaseUrl: process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL,
     serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
     anonKey: process.env.VITE_SUPABASE_ANON_KEY,
   }
-}
-
-function looksLikeBankSms(value) {
-  if (typeof value !== 'string') return false
-  const t = value.trim()
-  if (!t.toLowerCase().includes('transaction from') || t.length < 40) return false
-  if (/xxx/i.test(t)) return false
-  return /Transaction from \d{4} on \d{2}\/\d{2}\/\d{2}/.test(t)
 }
 
 function findBankSms(value, depth = 0) {
@@ -117,6 +113,11 @@ export async function lookupUserByToken(token) {
 
 export async function saveTransaction(userId, rawMessage) {
   const { supabaseUrl, serviceKey } = getConfig()
+
+  // Auto-classify the merchant into a budget category (best-effort).
+  const parsed = parseMessage(rawMessage)
+  const category_name = parsed ? matchCategory(parsed.merchant) : null
+
   const res = await fetch(`${supabaseUrl}/rest/v1/transactions`, {
     method: 'POST',
     headers: {
@@ -125,7 +126,7 @@ export async function saveTransaction(userId, rawMessage) {
       'Content-Type': 'application/json',
       Prefer: 'return=minimal',
     },
-    body: JSON.stringify({ user_id: userId, raw_message: rawMessage }),
+    body: JSON.stringify({ user_id: userId, raw_message: rawMessage, category_name }),
   })
   if (!res.ok) throw new Error(await res.text())
 }

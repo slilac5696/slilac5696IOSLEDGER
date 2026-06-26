@@ -1,18 +1,27 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Settings, Plus } from 'lucide-react'
+import { Settings, Plus, PieChart, Receipt, BarChart3, ListPlus, FolderPlus } from 'lucide-react'
 import LoginScreen from './components/LoginScreen'
-import Hero from './components/Hero'
-import TrendChart from './components/TrendChart'
-import MerchantLedger from './components/MerchantLedger'
-import TransactionRow from './components/TransactionRow'
-import ManualAdd from './components/ManualAdd'
-import EmptyState from './components/EmptyState'
-import PullToRefresh from './components/PullToRefresh'
-import SettingsSheet from './components/SettingsSheet'
 import BottomSheet from './components/BottomSheet'
-import SectionLabel from './components/SectionLabel'
+import SettingsSheet from './components/SettingsSheet'
+import OnboardingFlow from './components/OnboardingFlow'
+import AddCategorySheet from './components/AddCategorySheet'
+import AssignCategorySheet from './components/AssignCategorySheet'
+import ManualAdd from './components/ManualAdd'
+import BudgetTab from './tabs/BudgetTab'
+import TransactionsTab from './tabs/TransactionsTab'
+import ReportsTab from './tabs/ReportsTab'
 import { parseMessage, parseTransactionDate } from './lib/parseMessage'
-import { fetchTransactions, deleteTransaction } from './lib/supabase'
+import {
+  fetchTransactions,
+  deleteTransaction,
+  updateTransactionCategory,
+  fetchMonthlyIncome,
+  fetchCategories,
+  insertCategory,
+  updateCategory,
+  deleteCategory,
+} from './lib/supabase'
+import { monthKey } from './lib/format'
 
 function enrichTransaction(tx) {
   const parsed = parseMessage(tx.raw_message)
@@ -20,109 +29,134 @@ function enrichTransaction(tx) {
   return { ...tx, parsed, txDate }
 }
 
-function monthLabel(year, month) {
-  return new Date(year, month).toLocaleDateString('en-US', {
-    month: 'long',
-    year: 'numeric',
-  })
-}
+const TABS = [
+  { id: 'budget', label: 'Budget', icon: PieChart },
+  { id: 'transactions', label: 'Transactions', icon: Receipt },
+  { id: 'reports', label: 'Reports', icon: BarChart3 },
+]
 
 export default function App() {
   const [session, setSession] = useState(null)
   const [transactions, setTransactions] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [addOpen, setAddOpen] = useState(false)
+  const [income, setIncome] = useState(null)
+  const [categories, setCategories] = useState([])
+  const [budgetReady, setBudgetReady] = useState(false)
+
+  const [activeTab, setActiveTab] = useState('budget')
   const [now] = useState(() => new Date())
   const [viewYear, setViewYear] = useState(now.getFullYear())
   const [viewMonth, setViewMonth] = useState(now.getMonth())
 
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [fabOpen, setFabOpen] = useState(false)
+  const [addCategoryOpen, setAddCategoryOpen] = useState(false)
+  const [manualOpen, setManualOpen] = useState(false)
+  const [assignTx, setAssignTx] = useState(null)
+  const [expandedId, setExpandedId] = useState(null)
+
+  const month = monthKey(viewYear, viewMonth)
+  const token = session?.access_token
+  const userId = session?.user?.id
+
   const loadTransactions = useCallback(async () => {
-    if (!session?.access_token) return
-    setLoading(true)
+    if (!token) return
     try {
-      const data = await fetchTransactions(session.access_token)
+      const data = await fetchTransactions(token)
       setTransactions(data.map(enrichTransaction))
     } catch (err) {
       console.error(err)
-    } finally {
-      setLoading(false)
     }
-  }, [session])
+  }, [token])
+
+  const loadBudget = useCallback(async () => {
+    if (!token) return
+    setBudgetReady(false)
+    try {
+      const [inc, cats] = await Promise.all([
+        fetchMonthlyIncome(token, month),
+        fetchCategories(token, month),
+      ])
+      setIncome(inc)
+      setCategories(cats)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setBudgetReady(true)
+    }
+  }, [token, month])
 
   useEffect(() => {
     loadTransactions()
   }, [loadTransactions])
 
+  useEffect(() => {
+    loadBudget()
+  }, [loadBudget])
+
+  // Refresh transactions when the app regains focus (newly ingested SMS).
+  useEffect(() => {
+    if (!token) return
+    const onFocus = () => loadTransactions()
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
+    }
+  }, [token, loadTransactions])
+
   const monthTransactions = useMemo(
     () =>
       transactions
-        .filter(
-          (tx) =>
-            tx.txDate.getFullYear() === viewYear && tx.txDate.getMonth() === viewMonth
-        )
+        .filter((tx) => tx.txDate.getFullYear() === viewYear && tx.txDate.getMonth() === viewMonth)
         .sort((a, b) => b.txDate - a.txDate),
     [transactions, viewYear, viewMonth]
   )
 
-  const prevMonthDate = useMemo(() => new Date(viewYear, viewMonth - 1), [viewYear, viewMonth])
-  const prevMonthTransactions = useMemo(
-    () =>
-      transactions.filter(
-        (tx) =>
-          tx.txDate.getFullYear() === prevMonthDate.getFullYear() &&
-          tx.txDate.getMonth() === prevMonthDate.getMonth()
-      ),
-    [transactions, prevMonthDate]
-  )
+  const currency = monthTransactions.find((tx) => tx.parsed)?.parsed?.currency ?? 'MVR'
 
-  const monthTotal = useMemo(
-    () =>
-      monthTransactions.reduce((sum, tx) => sum + (tx.parsed?.amount ?? 0), 0),
+  const totalSpent = useMemo(
+    () => monthTransactions.reduce((sum, tx) => sum + (tx.parsed?.amount ?? 0), 0),
     [monthTransactions]
   )
 
-  const prevMonthTotal = useMemo(
-    () =>
-      prevMonthTransactions.reduce((sum, tx) => sum + (tx.parsed?.amount ?? 0), 0),
-    [prevMonthTransactions]
+  const incomeAmount = Number(income?.amount ?? 0)
+  const totalBudgeted = useMemo(
+    () => categories.reduce((sum, c) => sum + Number(c.budgeted ?? 0), 0),
+    [categories]
   )
 
-  const changePercent = useMemo(() => {
-    if (prevMonthTotal === 0) return null
-    return ((monthTotal - prevMonthTotal) / prevMonthTotal) * 100
-  }, [monthTotal, prevMonthTotal])
+  const categoryStats = useMemo(
+    () =>
+      categories.map((c) => {
+        const txs = monthTransactions.filter((tx) => tx.parsed && tx.category_name === c.name)
+        const spent = txs.reduce((sum, tx) => sum + tx.parsed.amount, 0)
+        return { ...c, budgeted: Number(c.budgeted ?? 0), spent, transactions: txs }
+      }),
+    [categories, monthTransactions]
+  )
 
-  const currency = monthTransactions.find((tx) => tx.parsed)?.parsed?.currency ?? 'MVR'
+  const prevMonthSpend = useMemo(() => {
+    const d = new Date(viewYear, viewMonth - 1)
+    return transactions
+      .filter((tx) => tx.parsed && tx.txDate.getFullYear() === d.getFullYear() && tx.txDate.getMonth() === d.getMonth())
+      .reduce((sum, tx) => sum + tx.parsed.amount, 0)
+  }, [transactions, viewYear, viewMonth])
 
-  const dailyData = useMemo(() => {
-    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate()
-    const buckets = Array.from({ length: daysInMonth }, (_, i) => ({
-      day: String(i + 1),
-      spend: 0,
-    }))
-    for (const tx of monthTransactions) {
-      if (!tx.parsed) continue
-      const day = tx.txDate.getDate()
-      buckets[day - 1].spend += tx.parsed.amount
+  const monthlyTrend = useMemo(() => {
+    const out = []
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(viewYear, viewMonth - i, 1)
+      const spend = transactions
+        .filter((tx) => tx.parsed && tx.txDate.getFullYear() === d.getFullYear() && tx.txDate.getMonth() === d.getMonth())
+        .reduce((sum, tx) => sum + tx.parsed.amount, 0)
+      out.push({ label: d.toLocaleDateString('en-US', { month: 'short' }), spend })
     }
-    return buckets
-  }, [monthTransactions, viewYear, viewMonth])
-
-  const topMerchants = useMemo(() => {
-    const map = new Map()
-    for (const tx of monthTransactions) {
-      if (!tx.parsed) continue
-      const name = tx.parsed.merchant
-      map.set(name, (map.get(name) ?? 0) + tx.parsed.amount)
-    }
-    return [...map.entries()]
-      .map(([name, total]) => ({ name, total }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5)
-  }, [monthTransactions])
+    return out
+  }, [transactions, viewYear, viewMonth])
 
   function prevMonth() {
+    setExpandedId(null)
     if (viewMonth === 0) {
       setViewMonth(11)
       setViewYear((y) => y - 1)
@@ -132,6 +166,7 @@ export default function App() {
   }
 
   function nextMonth() {
+    setExpandedId(null)
     if (viewMonth === 11) {
       setViewMonth(0)
       setViewYear((y) => y + 1)
@@ -140,12 +175,59 @@ export default function App() {
     }
   }
 
-  async function handleDelete(id) {
+  async function handleDeleteTransaction(id) {
     try {
-      await deleteTransaction(session.access_token, id)
+      await deleteTransaction(token, id)
       setTransactions((prev) => prev.filter((tx) => tx.id !== id))
     } catch (err) {
       console.error(err)
+    }
+  }
+
+  async function handleAssign(categoryId, categoryName) {
+    const tx = assignTx
+    if (!tx) return
+    try {
+      await updateTransactionCategory(token, tx.id, categoryId, categoryName)
+      setTransactions((prev) =>
+        prev.map((t) => (t.id === tx.id ? { ...t, category_id: categoryId, category_name: categoryName } : t))
+      )
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setAssignTx(null)
+    }
+  }
+
+  async function handleAddCategory(data) {
+    const created = await insertCategory(token, userId, {
+      month,
+      name: data.name,
+      icon: data.icon,
+      budgeted: data.budgeted,
+      sort_order: categories.length,
+    })
+    if (created) setCategories((prev) => [...prev, created])
+  }
+
+  async function handleEditBudget(id, budgeted) {
+    setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, budgeted } : c)))
+    try {
+      await updateCategory(token, id, { budgeted })
+    } catch (err) {
+      console.error(err)
+      loadBudget()
+    }
+  }
+
+  async function handleDeleteCategory(id) {
+    setCategories((prev) => prev.filter((c) => c.id !== id))
+    setExpandedId(null)
+    try {
+      await deleteCategory(token, id)
+    } catch (err) {
+      console.error(err)
+      loadBudget()
     }
   }
 
@@ -153,10 +235,27 @@ export default function App() {
     return <LoginScreen onLogin={setSession} />
   }
 
+  const isCurrentMonth = viewYear === now.getFullYear() && viewMonth === now.getMonth()
+  const needsOnboarding = isCurrentMonth && budgetReady && !income && categories.length === 0
+
+  if (needsOnboarding) {
+    return (
+      <OnboardingFlow
+        token={token}
+        userId={userId}
+        month={month}
+        year={viewYear}
+        monthIndex={viewMonth}
+        currency={currency}
+        onComplete={loadBudget}
+      />
+    )
+  }
+
   return (
     <div className="min-h-dvh bg-stone-50 flex flex-col">
       <div className="max-w-md mx-auto w-full flex flex-col min-h-dvh relative">
-        <header className="sticky top-0 z-20 bg-stone-50/95 backdrop-blur-sm px-4 py-3 flex items-center justify-center">
+        <header className="sticky top-0 z-20 h-14 bg-stone-50/95 backdrop-blur-sm px-4 flex items-center justify-center">
           <h1 className="font-display text-lg text-stone-900">Ledger</h1>
           <button
             type="button"
@@ -168,66 +267,151 @@ export default function App() {
           </button>
         </header>
 
-        <PullToRefresh onRefresh={loadTransactions} refreshing={loading}>
-          <Hero
-            total={monthTotal}
-            changePercent={changePercent}
-            currency={currency}
-            monthLabel={monthLabel(viewYear, viewMonth)}
-            viewYear={viewYear}
-            viewMonth={viewMonth}
-            onPrevMonth={prevMonth}
-            onNextMonth={nextMonth}
-          />
-
-          <TrendChart data={dailyData} />
-          <MerchantLedger merchants={topMerchants} currency={currency} />
-
-          {loading && transactions.length === 0 ? (
-            <p className="px-4 py-12 font-mono text-xs text-stone-400 text-center">Loading…</p>
-          ) : monthTransactions.length === 0 ? (
-            <EmptyState onAddManual={() => setAddOpen(true)} />
-          ) : (
-            <section className="pb-24">
-              <SectionLabel>Transactions</SectionLabel>
-              {monthTransactions.map((tx) => (
-                <TransactionRow
-                  key={tx.id}
-                  transaction={tx}
-                  parsed={tx.parsed}
-                  onDelete={handleDelete}
-                />
-              ))}
-            </section>
+        <main className="flex-1">
+          {activeTab === 'budget' && (
+            <BudgetTab
+              income={incomeAmount}
+              totalSpent={totalSpent}
+              totalBudgeted={totalBudgeted}
+              currency={currency}
+              year={viewYear}
+              monthIndex={viewMonth}
+              onPrevMonth={prevMonth}
+              onNextMonth={nextMonth}
+              categoryStats={categoryStats}
+              expandedId={expandedId}
+              onToggleCategory={(id) => setExpandedId((cur) => (cur === id ? null : id))}
+              onEditBudget={handleEditBudget}
+              onDeleteCategory={handleDeleteCategory}
+              onAddCategory={() => setAddCategoryOpen(true)}
+            />
           )}
-        </PullToRefresh>
+
+          {activeTab === 'transactions' && (
+            <TransactionsTab
+              transactions={monthTransactions}
+              categories={categories}
+              currency={currency}
+              onDelete={handleDeleteTransaction}
+              onAssign={(tx) => setAssignTx(tx)}
+            />
+          )}
+
+          {activeTab === 'reports' && (
+            <ReportsTab
+              categoryStats={categoryStats}
+              monthlyTrend={monthlyTrend}
+              prevMonthSpend={prevMonthSpend}
+              currency={currency}
+            />
+          )}
+        </main>
 
         <button
           type="button"
-          onClick={() => setAddOpen(true)}
-          className="absolute bottom-6 right-6 z-30 w-14 h-14 rounded-full bg-teal-800 text-white shadow-lg flex items-center justify-center"
-          aria-label="Add transaction"
+          onClick={() => setFabOpen(true)}
+          className="fixed bottom-24 z-30 w-14 h-14 rounded-full bg-teal-800 text-white shadow-lg flex items-center justify-center"
+          style={{ right: 'calc(max(0px, 50vw - 14rem) + 1.5rem)' }}
+          aria-label="Add"
         >
           <Plus size={24} strokeWidth={1.5} />
         </button>
 
+        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-20 bg-white border-t border-stone-200">
+          <div className="grid grid-cols-3">
+            {TABS.map((tab) => {
+              const Icon = tab.icon
+              const active = activeTab === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex flex-col items-center gap-1 py-2.5 ${active ? 'text-teal-800' : 'text-stone-400'}`}
+                >
+                  <Icon size={20} strokeWidth={active ? 2 : 1.5} />
+                  <span className="font-mono text-[10px] uppercase tracking-wider">{tab.label}</span>
+                </button>
+              )
+            })}
+          </div>
+          <div className="h-[env(safe-area-inset-bottom)]" />
+        </nav>
+
         <SettingsSheet
           open={settingsOpen}
           onClose={() => setSettingsOpen(false)}
-          token={session.access_token}
-          userId={session.user.id}
+          token={token}
+          userId={userId}
+          month={month}
+          year={viewYear}
+          monthIndex={viewMonth}
+          income={incomeAmount}
+          currency={currency}
+          onIncomeSaved={(value) => setIncome((prev) => ({ ...(prev || { month }), amount: value }))}
           onSaved={loadTransactions}
           onSignOut={() => setSession(null)}
         />
 
-        <BottomSheet open={addOpen} onClose={() => setAddOpen(false)}>
+        <BottomSheet open={fabOpen} onClose={() => setFabOpen(false)}>
+          <h2 className="font-display text-lg text-stone-900 mb-4">Add</h2>
+          <button
+            type="button"
+            onClick={() => {
+              setFabOpen(false)
+              setManualOpen(true)
+            }}
+            className="w-full flex items-center gap-3 py-3.5 border-b border-stone-100 text-left"
+          >
+            <span className="w-9 h-9 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center">
+              <ListPlus size={17} strokeWidth={1.75} />
+            </span>
+            <span className="text-sm text-stone-800">Add transaction manually</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setFabOpen(false)
+              setActiveTab('budget')
+              setAddCategoryOpen(true)
+            }}
+            className="w-full flex items-center gap-3 py-3.5 text-left"
+          >
+            <span className="w-9 h-9 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center">
+              <FolderPlus size={17} strokeWidth={1.75} />
+            </span>
+            <span className="text-sm text-stone-800">Add category</span>
+          </button>
+        </BottomSheet>
+
+        <BottomSheet open={addCategoryOpen} onClose={() => setAddCategoryOpen(false)}>
+          <AddCategorySheet
+            currency={currency}
+            onSave={handleAddCategory}
+            onClose={() => setAddCategoryOpen(false)}
+          />
+        </BottomSheet>
+
+        <BottomSheet open={manualOpen} onClose={() => setManualOpen(false)}>
           <ManualAdd
-            token={session.access_token}
-            userId={session.user.id}
+            token={token}
+            userId={userId}
             onSaved={loadTransactions}
-            onClose={() => setAddOpen(false)}
+            onClose={() => setManualOpen(false)}
             embedded
           />
+        </BottomSheet>
+
+        <BottomSheet open={Boolean(assignTx)} onClose={() => setAssignTx(null)}>
+          {assignTx && (
+            <AssignCategorySheet
+              transaction={assignTx}
+              categories={categories}
+              currency={currency}
+              onAssign={handleAssign}
+              onClose={() => setAssignTx(null)}
+            />
+          )}
         </BottomSheet>
       </div>
     </div>

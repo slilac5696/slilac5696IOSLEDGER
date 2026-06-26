@@ -1,6 +1,7 @@
 import {
   extractSmsFromRequest,
   saveTransaction,
+  looksLikeBankSms,
 } from './ingestLib.js'
 
 function getConfig() {
@@ -19,7 +20,7 @@ function isPlaceholderMessage(msg) {
   const placeholders = new Set([
     'shortcut input', 'message', 'sms', 'text', 'provided input', 'input',
   ])
-  return placeholders.has(lower) || !lower.includes('transaction from')
+  return placeholders.has(lower) || !looksLikeBankSms(msg)
 }
 
 export default async function ingest(req, res) {
