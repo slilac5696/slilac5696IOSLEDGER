@@ -17,6 +17,7 @@ export default function LoginScreen({ onLogin }) {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
+  const [remember, setRemember] = useState(true)
 
   function switchMode(next) {
     setMode(next)
@@ -68,10 +69,10 @@ export default function LoginScreen({ onLogin }) {
     try {
       if (mode === MODES.signin) {
         const session = await login(trimmedUser, trimmedPass)
-        onLogin(session)
+        onLogin(session, remember)
       } else if (mode === MODES.signup) {
         const session = await signUp(trimmedUser, trimmedPass)
-        onLogin(session)
+        onLogin(session, remember)
       } else if (mode === MODES.reset) {
         await resetPassword(trimmedUser, trimmedPass)
         setSuccess('Password updated. You can sign in now.')
@@ -101,7 +102,7 @@ export default function LoginScreen({ onLogin }) {
           </div>
           <h1 className="font-display text-3xl text-stone-900 tracking-tight">Ledger</h1>
           <p className="font-mono text-xs text-stone-500 mt-2 uppercase tracking-widest">
-            Spending from your SMS
+            Every purchase. Automatically.
           </p>
         </header>
 
@@ -176,6 +177,18 @@ export default function LoginScreen({ onLogin }) {
             <p className="font-mono text-[10px] text-stone-400 mb-4 leading-relaxed">
               Pick a username and password. No email needed.
             </p>
+          )}
+
+          {mode !== MODES.reset && (
+            <label className="flex items-center gap-2 mb-4 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+                className="w-4 h-4 accent-teal-800"
+              />
+              <span className="font-mono text-xs text-stone-500">Stay signed in</span>
+            </label>
           )}
 
           {error && <p className="font-mono text-xs text-orange-700 mb-4">{error}</p>}

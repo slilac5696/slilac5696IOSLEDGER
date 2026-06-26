@@ -43,6 +43,25 @@ export async function login(emailOrUsername, password) {
   return data
 }
 
+export async function refreshSession(refreshToken) {
+  assertConfig()
+  const res = await fetch(
+    `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,
+    {
+      method: 'POST',
+      headers: {
+        apikey: ANON_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    }
+  )
+
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error_description || data.msg || 'Session refresh failed')
+  return data
+}
+
 export async function signUp(username, password) {
   assertConfig()
   if (!isValidUsername(username) && !username.includes('@')) {

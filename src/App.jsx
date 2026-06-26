@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Settings, Plus, PieChart, Receipt, BarChart3, ListPlus, FolderPlus } from 'lucide-react'
 import LoginScreen from './components/LoginScreen'
 import BottomSheet from './components/BottomSheet'
@@ -20,8 +20,10 @@ import {
   insertCategory,
   updateCategory,
   deleteCategory,
+  refreshSession,
 } from './lib/supabase'
 import { monthKey } from './lib/format'
+import { saveSession, loadSession, clearSession } from './lib/session'
 
 function enrichTransaction(tx) {
   const parsed = parseMessage(tx.raw_message)
@@ -36,7 +38,42 @@ const TABS = [
 ]
 
 export default function App() {
-  const [session, setSession] = useState(null)
+  const [session, setSession] = useState(() => loadSession())
+  const rememberRef = useRef(Boolean(loadSession()))
+
+  const handleLogin = useCallback((next, remember = true) => {
+    rememberRef.current = remember
+    setSession(next)
+    if (remember) saveSession(next)
+    else clearSession()
+  }, [])
+
+  const handleSignOut = useCallback(() => {
+    rememberRef.current = false
+    setSession(null)
+    clearSession()
+  }, [])
+
+  // Keep a saved session alive by refreshing its access token before expiry.
+  useEffect(() => {
+    if (!session?.refresh_token || !session?.expires_at) return
+    let cancelled = false
+    const delay = Math.max(session.expires_at * 1000 - Date.now() - 60_000, 0)
+    const timer = setTimeout(async () => {
+      try {
+        const next = await refreshSession(session.refresh_token)
+        if (cancelled) return
+        setSession(next)
+        if (rememberRef.current) saveSession(next)
+      } catch {
+        if (!cancelled) handleSignOut()
+      }
+    }, delay)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [session, handleSignOut])
   const [transactions, setTransactions] = useState([])
   const [income, setIncome] = useState(null)
   const [categories, setCategories] = useState([])
@@ -232,7 +269,7 @@ export default function App() {
   }
 
   if (!session) {
-    return <LoginScreen onLogin={setSession} />
+    return <LoginScreen onLogin={handleLogin} />
   }
 
   const isCurrentMonth = viewYear === now.getFullYear() && viewMonth === now.getMonth()
@@ -350,7 +387,7 @@ export default function App() {
           currency={currency}
           onIncomeSaved={(value) => setIncome((prev) => ({ ...(prev || { month }), amount: value }))}
           onSaved={loadTransactions}
-          onSignOut={() => setSession(null)}
+          onSignOut={handleSignOut}
         />
 
         <BottomSheet open={fabOpen} onClose={() => setFabOpen(false)}>
