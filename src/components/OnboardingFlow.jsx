@@ -66,7 +66,7 @@ export default function OnboardingFlow({ token, userId, month, year, monthIndex,
               What's your income this month?
             </h1>
             <p className="mt-3 font-mono text-xs text-stone-500 leading-relaxed">
-              This is your starting point. Every dollar gets a job.
+              This is your starting point. Every {currency} gets a job.
             </p>
 
             <div className="mt-10 flex items-baseline gap-2 border-b-2 border-teal-800 pb-3">

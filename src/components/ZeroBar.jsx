@@ -38,11 +38,11 @@ export default function ZeroBar({ income, budgeted, currency = 'MVR' }) {
         ) : fullyBudgeted ? (
           <p className="flex items-center gap-1.5 font-mono text-[11px] text-emerald-200">
             <Check size={13} strokeWidth={2.5} />
-            Every dollar has a job
+            Every {currency} has a job
           </p>
         ) : leftToBudget > 0 ? (
           <p className="font-mono text-[11px] text-amber-200">
-            Assign remaining dollars to a category
+            Assign remaining {currency} to a category
           </p>
         ) : null}
       </div>

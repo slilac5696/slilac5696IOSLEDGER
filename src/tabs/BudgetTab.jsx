@@ -51,7 +51,7 @@ export default function BudgetTab({
       <section>
         {categoryStats.length === 0 ? (
           <p className="px-5 py-10 text-center font-mono text-xs text-stone-400">
-            No categories yet. Add one to start giving every dollar a job.
+            No categories yet. Add one to start giving every {currency} a job.
           </p>
         ) : (
           categoryStats.map((cat) => (
