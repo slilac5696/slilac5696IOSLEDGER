@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Check } from 'lucide-react'
-import { PRESET_CATEGORIES, iconFor } from '../lib/categoryIcons'
+import { Check, Plus } from 'lucide-react'
+import { PRESET_CATEGORIES, iconFor, suggestIcon } from '../lib/categoryIcons'
 import { upsertMonthlyIncome, insertCategories } from '../lib/supabase'
 import { money, monthLabel } from '../lib/format'
 
@@ -8,6 +8,7 @@ export default function OnboardingFlow({ token, userId, month, year, monthIndex,
   const [step, setStep] = useState(1)
   const [income, setIncome] = useState('')
   const [picked, setPicked] = useState({})
+  const [customName, setCustomName] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -30,21 +31,31 @@ export default function OnboardingFlow({ token, userId, month, year, monthIndex,
     setPicked((prev) => ({ ...prev, [name]: value }))
   }
 
+  function addCustom() {
+    const name = customName.trim()
+    if (!name) return
+    const exists = Object.keys(picked).some((k) => k.toLowerCase() === name.toLowerCase())
+    if (exists) {
+      setError(`"${name}" is already added.`)
+      return
+    }
+    setPicked((prev) => ({ ...prev, [name]: '' }))
+    setCustomName('')
+    setError('')
+  }
+
   async function finish() {
     setSaving(true)
     setError('')
     try {
       await upsertMonthlyIncome(token, userId, month, incomeNum)
-      const categories = entries.map(([name, amt], i) => {
-        const preset = PRESET_CATEGORIES.find((p) => p.name === name)
-        return {
-          month,
-          name,
-          icon: preset?.icon || 'circle',
-          budgeted: parseFloat(amt) || 0,
-          sort_order: i,
-        }
-      })
+      const categories = entries.map(([name, amt], i) => ({
+        month,
+        name,
+        icon: suggestIcon(name),
+        budgeted: parseFloat(amt) || 0,
+        sort_order: i,
+      }))
       await insertCategories(token, userId, categories)
       onComplete()
     } catch (err) {
@@ -124,17 +135,40 @@ export default function OnboardingFlow({ token, userId, month, year, monthIndex,
               })}
             </div>
 
+            <div className="mt-4 flex items-center gap-2">
+              <input
+                type="text"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    addCustom()
+                  }
+                }}
+                placeholder="Add your own category"
+                className="flex-1 min-w-0 border-b border-stone-200 bg-transparent py-2 font-mono text-xs text-stone-800 focus:outline-none focus:border-teal-800"
+              />
+              <button
+                type="button"
+                onClick={addCustom}
+                disabled={!customName.trim()}
+                className="shrink-0 inline-flex items-center gap-1 rounded-full bg-teal-800 text-white px-3 py-1.5 font-mono text-xs disabled:opacity-40"
+              >
+                <Plus size={13} strokeWidth={2} /> Add
+              </button>
+            </div>
+
             {entries.length > 0 && (
               <div className="mt-6 space-y-2">
                 {entries.map(([name, amt]) => {
-                  const preset = PRESET_CATEGORIES.find((p) => p.name === name)
-                  const Icon = iconFor(preset?.icon)
+                  const Icon = iconFor(suggestIcon(name))
                   return (
                     <div key={name} className="flex items-center gap-3 rounded-xl bg-white border border-stone-200 px-3 py-2.5">
                       <span className="w-8 h-8 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center shrink-0">
                         <Icon size={15} strokeWidth={1.75} />
                       </span>
-                      <span className="flex-1 text-sm text-stone-800">{name}</span>
+                      <span className="flex-1 text-sm text-stone-800 truncate">{name}</span>
                       <span className="font-mono text-xs text-stone-400">{currency}</span>
                       <input
                         type="number"
@@ -142,8 +176,16 @@ export default function OnboardingFlow({ token, userId, month, year, monthIndex,
                         value={amt}
                         onChange={(e) => setAmount(name, e.target.value)}
                         placeholder="0"
-                        className="w-24 border border-stone-200 px-2 py-1 font-mono text-xs text-right text-stone-800 focus:outline-none focus:border-teal-800 rounded-sm"
+                        className="w-20 border border-stone-200 px-2 py-1 font-mono text-xs text-right text-stone-800 focus:outline-none focus:border-teal-800 rounded-sm"
                       />
+                      <button
+                        type="button"
+                        onClick={() => togglePreset(name)}
+                        className="shrink-0 text-stone-300 hover:text-orange-500 px-1"
+                        aria-label={`Remove ${name}`}
+                      >
+                        ×
+                      </button>
                     </div>
                   )
                 })}
