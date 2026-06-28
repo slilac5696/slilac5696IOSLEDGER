@@ -84,24 +84,30 @@ export default function AndroidSetup({ webhookUrl, error, onCopy, copied }) {
         <summary className="text-stone-400 uppercase tracking-wider text-[10px] cursor-pointer">
           Alternative · MacroDroid (free)
         </summary>
-        <ol className="mt-2 list-decimal list-inside space-y-1.5 leading-relaxed text-[11px]">
-          <li>Trigger → SMS received → filter by bank sender</li>
-          <li>Action → HTTP Request → Method <strong>POST</strong></li>
-          <li>URL → paste webhook above</li>
-          <li>Content type → <strong>Form URL encoded</strong></li>
-          <li>Field <code>raw_message</code> → SMS body variable</li>
-          <li>No extra headers needed</li>
-        </ol>
-      </details>
-
-      <details className="border border-dotted border-stone-200 p-3 rounded-sm">
-        <summary className="text-stone-400 uppercase tracking-wider text-[10px] cursor-pointer">
-          Alternative · Tasker (paid app)
-        </summary>
-        <ol className="mt-2 list-decimal list-inside space-y-1.5 leading-relaxed text-[11px]">
-          <li>Profile → Event → Phone → Received text → bank sender</li>
-          <li>Task → Net → HTTP Request → POST your webhook URL</li>
-          <li>Body → Form field <code>raw_message</code> = <code>%SMSRB</code> (message body)</li>
+        <p className="mt-2 leading-relaxed text-stone-500 text-[11px]">
+          A free automation app. You'll build one macro with a trigger and an action.
+        </p>
+        <ol className="mt-2 list-decimal list-inside space-y-2 leading-relaxed text-[11px]">
+          <li>Install <strong>MacroDroid</strong> from the Play Store and open it.</li>
+          <li>Tap <strong>Add Macro</strong> (the + button).</li>
+          <li>
+            <strong>Add the trigger:</strong> tap <strong>Trigger</strong> →
+            <em> Device Events</em> → <strong>SMS Received</strong>. For "Sender",
+            type your bank's number/name, or leave it as <em>Any</em> to catch all SMS.
+          </li>
+          <li>
+            <strong>Add the action:</strong> tap <strong>Action</strong> →
+            <em> Connectivity</em> → <strong>HTTP Request</strong>.
+          </li>
+          <li>Set the method to <strong>POST</strong>.</li>
+          <li>For the URL, paste the <strong>webhook URL</strong> from above.</li>
+          <li>Set the body / content type to <strong>Form data</strong> (URL encoded).</li>
+          <li>
+            Add one field — name it <code>raw_message</code>. For its value, tap the
+            tag/variable icon and pick <strong>SMS Message</strong> (the message text).
+          </li>
+          <li>Leave headers empty. Tick the checkmark to save the macro.</li>
+          <li>Grant the SMS permission if prompted, then send a test SMS.</li>
         </ol>
       </details>
 
