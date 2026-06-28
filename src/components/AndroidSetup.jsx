@@ -40,11 +40,11 @@ export default function AndroidSetup({ webhookUrl, error, onCopy, copied }) {
         </>
       )}
 
-      <div className="border border-teal-200 bg-teal-50 p-3 space-y-2 rounded-sm">
-        <p className="text-teal-800 uppercase tracking-wider text-[10px] font-medium">
+      <details open className="border border-teal-200 bg-teal-50 p-3 rounded-sm">
+        <summary className="text-teal-800 uppercase tracking-wider text-[10px] font-medium cursor-pointer">
           Recommended · SMS to URL Forwarder (free)
-        </p>
-        <ol className="list-decimal list-inside space-y-1.5 leading-relaxed text-[11px]">
+        </summary>
+        <ol className="mt-2 list-decimal list-inside space-y-1.5 leading-relaxed text-[11px]">
           <li>
             Install <strong>SMS to URL Forwarder</strong> from the Play Store or
             F-Droid (open source, no account).
@@ -59,26 +59,26 @@ export default function AndroidSetup({ webhookUrl, error, onCopy, copied }) {
           </li>
         </ol>
 
-        <p className="break-all text-stone-800 bg-white p-2 border border-stone-200 text-[11px]">
+        <p className="mt-2 break-all text-stone-800 bg-white p-2 border border-stone-200 text-[11px]">
           {PAYLOAD}
         </p>
         <button
           type="button"
           onClick={copyPayload}
-          className="w-full py-2 border border-teal-700 text-teal-800 uppercase tracking-wider text-[11px]"
+          className="mt-2 w-full py-2 border border-teal-700 text-teal-800 uppercase tracking-wider text-[11px]"
         >
           {payloadCopied ? 'Copied!' : 'Copy payload'}
         </button>
 
-        <ol start={6} className="list-decimal list-inside space-y-1.5 leading-relaxed text-[11px]">
+        <ol start={6} className="mt-2 list-decimal list-inside space-y-1.5 leading-relaxed text-[11px]">
           <li>Save the rule and grant the SMS permission when asked.</li>
           <li>Send yourself a test SMS, or wait for the next bank message.</li>
         </ol>
-        <p className="leading-relaxed text-stone-500 text-[11px]">
+        <p className="mt-2 leading-relaxed text-stone-500 text-[11px]">
           <code>%text%</code> is the app's placeholder for the message body — leave
           it as-is; it fills in the real SMS automatically.
         </p>
-      </div>
+      </details>
 
       <details className="border border-dotted border-stone-200 p-3 rounded-sm">
         <summary className="text-stone-400 uppercase tracking-wider text-[10px] cursor-pointer">
