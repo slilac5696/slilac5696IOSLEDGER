@@ -85,30 +85,67 @@ export default function AndroidSetup({ webhookUrl, error, onCopy, copied }) {
           Alternative · MacroDroid (free)
         </summary>
         <p className="mt-2 leading-relaxed text-stone-500 text-[11px]">
-          A free automation app. You'll build one macro with a trigger and an action.
+          One macro = one trigger (SMS) + one action (HTTP Request). Follow exactly:
         </p>
-        <ol className="mt-2 list-decimal list-inside space-y-2 leading-relaxed text-[11px]">
-          <li>Install <strong>MacroDroid</strong> from the Play Store and open it.</li>
-          <li>Tap <strong>Add Macro</strong> (the + button).</li>
+
+        <p className="mt-3 text-stone-700 uppercase tracking-wider text-[10px] font-medium">
+          A · Trigger (red box)
+        </p>
+        <ol className="mt-1.5 list-decimal list-inside space-y-1.5 leading-relaxed text-[11px]">
+          <li>Tap <strong>+</strong> on the red <strong>Triggers</strong> box.</li>
+          <li>Open <strong>Call/SMS</strong> → tap <strong>SMS Received</strong>.</li>
           <li>
-            <strong>Add the trigger:</strong> tap <strong>Trigger</strong> →
-            <em> Device Events</em> → <strong>SMS Received</strong>. For "Sender",
-            type your bank's number/name, or leave it as <em>Any</em> to catch all SMS.
+            On "Select Option" choose <strong>Any Number</strong> (catches every SMS) →
+            <strong> OK</strong>.
           </li>
           <li>
-            <strong>Add the action:</strong> tap <strong>Action</strong> →
-            <em> Connectivity</em> → <strong>HTTP Request</strong>.
+            On "SMS Content" leave <strong>Any</strong> selected → <strong>OK</strong>.
           </li>
-          <li>Set the method to <strong>POST</strong>.</li>
-          <li>For the URL, paste the <strong>webhook URL</strong> from above.</li>
-          <li>Set the body / content type to <strong>Form data</strong> (URL encoded).</li>
-          <li>
-            Add one field — name it <code>raw_message</code>. For its value, tap the
-            tag/variable icon and pick <strong>SMS Message</strong> (the message text).
-          </li>
-          <li>Leave headers empty. Tick the checkmark to save the macro.</li>
-          <li>Grant the SMS permission if prompted, then send a test SMS.</li>
         </ol>
+
+        <p className="mt-3 text-stone-700 uppercase tracking-wider text-[10px] font-medium">
+          B · Action (blue box)
+        </p>
+        <ol className="mt-1.5 list-decimal list-inside space-y-1.5 leading-relaxed text-[11px]">
+          <li>Tap <strong>+</strong> on the blue <strong>Actions</strong> box.</li>
+          <li>
+            Search <strong>http</strong> → under "Web Interactions" tap
+            <strong> HTTP Request</strong>.
+          </li>
+          <li>
+            On the <strong>Settings</strong> tab: Request method =
+            <strong> POST</strong>, and paste the <strong>webhook URL</strong> above
+            into <em>Enter url</em>.
+          </li>
+          <li>
+            Swipe to the <strong>Content Body</strong> tab. Set
+            <strong> Content type</strong> to <strong>text/plain</strong>.
+          </li>
+          <li>
+            Keep <strong>Text</strong> selected. Tap the <strong>…</strong> button next
+            to the Text box → <em>Magic Text</em> → <strong>SMS</strong> →
+            <strong> Message</strong>. It inserts <code>[sms_message]</code>.
+          </li>
+          <li>
+            The Text box should now show exactly <code>[sms_message]</code> and nothing
+            else. Tap the <strong>✓</strong> (top right) to save the action.
+          </li>
+        </ol>
+
+        <p className="mt-3 text-stone-700 uppercase tracking-wider text-[10px] font-medium">
+          C · Save
+        </p>
+        <ol className="mt-1.5 list-decimal list-inside space-y-1.5 leading-relaxed text-[11px]">
+          <li>Name the macro (e.g. "Ledger") and tap the save <strong>✓</strong>.</li>
+          <li>Grant the SMS permission if prompted.</li>
+          <li>Send yourself a bank-format SMS, or wait for a real one, to test.</li>
+        </ol>
+
+        <p className="mt-2 leading-relaxed text-stone-400 text-[11px]">
+          Don't touch Query Params or Header Params — leave them empty.
+          <code> [sms_message]</code> is MacroDroid's variable for the message text; it
+          fills in the real SMS automatically.
+        </p>
       </details>
 
       <p className="leading-relaxed text-stone-400 text-[11px]">
