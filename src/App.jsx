@@ -10,11 +10,13 @@ import ManualAdd from './components/ManualAdd'
 import BudgetTab from './tabs/BudgetTab'
 import TransactionsTab from './tabs/TransactionsTab'
 import ReportsTab from './tabs/ReportsTab'
-import { parseMessage, parseTransactionDate } from './lib/parseMessage'
+import { parseMessage, parseTransactionDate, normalizeMerchant } from './lib/parseMessage'
 import {
   fetchTransactions,
   deleteTransaction,
   updateTransactionCategory,
+  upsertMerchantVote,
+  deleteMerchantVote,
   fetchMonthlyIncome,
   fetchCategories,
   insertCategory,
@@ -229,6 +231,15 @@ export default function App() {
       setTransactions((prev) =>
         prev.map((t) => (t.id === tx.id ? { ...t, category_id: categoryId, category_name: categoryName } : t))
       )
+
+      // Contribute to the shared merchant→category map (one vote per merchant).
+      const merchantKey = normalizeMerchant(tx.parsed?.merchant)
+      if (merchantKey) {
+        const vote = categoryName
+          ? upsertMerchantVote(token, userId, merchantKey, categoryName)
+          : deleteMerchantVote(token, merchantKey)
+        vote.catch((err) => console.error(err))
+      }
     } catch (err) {
       console.error(err)
     } finally {

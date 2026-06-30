@@ -120,13 +120,51 @@ setup (`/api/i/{token}`). No secret keys or headers are needed.
 - **Android (MacroDroid/Tasker):** SMS-received trigger → HTTP POST to the
   webhook URL → form field `raw_message` = the SMS body.
 
+### 004 — shared merchant→category map (NEW)
+
+```sql
+create table if not exists merchant_category_votes (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references auth.users(id),
+  merchant_key text not null,
+  category_name text not null,
+  updated_at timestamptz not null default now(),
+  unique(user_id, merchant_key)
+);
+
+alter table merchant_category_votes enable row level security;
+
+create policy "own merchant votes" on merchant_category_votes
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create index if not exists merchant_votes_key_idx
+  on merchant_category_votes (merchant_key);
+```
+
 ## 5. Category auto-matching
 
 When a bank SMS is ingested, the server parses the merchant name with
-`parseMessage()` and runs a keyword matcher (`matchCategory()`), then stores the
-result in `transactions.category_name`. Matched transactions immediately count
-toward that category's spent amount; unmatched ones show as **Uncategorized**
-until you tap to assign them.
+`parseMessage()` and decides a category in this order:
+
+1. **Shared merchant map (community).** The merchant is normalized
+   (`normalizeMerchant()` — uppercased, whitespace-collapsed, trailing 2-letter
+   location code stripped) and looked up in `merchant_category_votes`. The
+   **majority** category across all users wins.
+2. **Keyword matcher (`matchCategory()`).** Static fallback when no votes exist.
+
+The result is stored in `transactions.category_name`. Matched transactions
+immediately count toward that category's spent amount; unmatched ones show as
+**Uncategorized** until you tap to assign them.
+
+### How the shared merchant map learns
+
+Whenever a user assigns a transaction to a category, the app records **one vote
+per (user, merchant)** in `merchant_category_votes` (re-assigning overwrites
+that user's previous vote). Because ingest uses the **majority** vote, a single
+wrong assignment can't mis-categorize a merchant for everyone — the crowd
+corrects it. Clients can only read/write their own votes (RLS); the ingest
+webhook tallies all votes via the service role, so other users' ids are never
+exposed to clients.
 
 ### Customizing the keyword map
 

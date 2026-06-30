@@ -1,4 +1,9 @@
-import { parseMessage, matchCategory, looksLikeBankSms } from '../src/lib/parseMessage.js'
+import {
+  parseMessage,
+  matchCategory,
+  looksLikeBankSms,
+  normalizeMerchant,
+} from '../src/lib/parseMessage.js'
 
 export { looksLikeBankSms }
 
@@ -111,12 +116,56 @@ export async function lookupUserByToken(token) {
   return rows[0]?.user_id ?? null
 }
 
+/**
+ * Look up the shared (community) category for a merchant by majority vote.
+ * Reads all users' votes for the merchant key via the service role and returns
+ * the most-chosen category, or null when there are no votes.
+ */
+export async function lookupMerchantCategory(merchantKey) {
+  if (!merchantKey) return null
+  const { supabaseUrl, serviceKey } = getConfig()
+  const res = await fetch(
+    `${supabaseUrl}/rest/v1/merchant_category_votes?merchant_key=eq.${encodeURIComponent(
+      merchantKey
+    )}&select=category_name`,
+    {
+      headers: {
+        apikey: serviceKey,
+        Authorization: `Bearer ${serviceKey}`,
+      },
+    }
+  )
+  if (!res.ok) return null
+  const rows = await res.json()
+  if (!rows.length) return null
+
+  const tally = new Map()
+  for (const row of rows) {
+    const name = row.category_name
+    tally.set(name, (tally.get(name) || 0) + 1)
+  }
+  let best = null
+  let bestCount = 0
+  for (const [name, count] of tally) {
+    if (count > bestCount) {
+      best = name
+      bestCount = count
+    }
+  }
+  return best
+}
+
 export async function saveTransaction(userId, rawMessage) {
   const { supabaseUrl, serviceKey } = getConfig()
 
-  // Auto-classify the merchant into a budget category (best-effort).
+  // Auto-classify the merchant: prefer the shared community mapping (majority
+  // vote), then fall back to the static keyword matcher.
   const parsed = parseMessage(rawMessage)
-  const category_name = parsed ? matchCategory(parsed.merchant) : null
+  let category_name = null
+  if (parsed?.merchant) {
+    category_name = await lookupMerchantCategory(normalizeMerchant(parsed.merchant))
+    if (!category_name) category_name = matchCategory(parsed.merchant)
+  }
 
   const res = await fetch(`${supabaseUrl}/rest/v1/transactions`, {
     method: 'POST',

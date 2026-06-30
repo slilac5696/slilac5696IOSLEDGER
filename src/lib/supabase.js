@@ -139,6 +139,51 @@ export async function deleteTransaction(token, id) {
   }
 }
 
+/**
+ * Record this user's vote that a merchant belongs to a category. One row per
+ * (user, merchant) — re-assigning overwrites their previous vote. The shared
+ * majority across all users drives auto-categorization on ingest.
+ */
+export async function upsertMerchantVote(token, userId, merchantKey, categoryName) {
+  if (!merchantKey || !categoryName) return
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/merchant_category_votes?on_conflict=user_id,merchant_key`,
+    {
+      method: 'POST',
+      headers: headers(token, {
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=minimal',
+      }),
+      body: JSON.stringify({
+        user_id: userId,
+        merchant_key: merchantKey,
+        category_name: categoryName,
+        updated_at: new Date().toISOString(),
+      }),
+    }
+  )
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(text || 'Failed to save merchant mapping')
+  }
+}
+
+/** Remove this user's vote for a merchant (RLS limits the delete to their row). */
+export async function deleteMerchantVote(token, merchantKey) {
+  if (!merchantKey) return
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/merchant_category_votes?merchant_key=eq.${encodeURIComponent(merchantKey)}`,
+    {
+      method: 'DELETE',
+      headers: headers(token),
+    }
+  )
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(text || 'Failed to clear merchant mapping')
+  }
+}
+
 export async function updateTransactionCategory(token, id, categoryId, categoryName) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/transactions?id=eq.${id}`, {
     method: 'PATCH',

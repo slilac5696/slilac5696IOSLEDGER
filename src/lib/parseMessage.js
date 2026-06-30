@@ -95,6 +95,21 @@ export function matchCategory(merchant) {
   return null
 }
 
+/**
+ * Normalize a merchant name into a stable key for the shared merchant→category
+ * map. Uppercases, collapses whitespace, and strips a trailing 2-letter location
+ * code (e.g. "REDWAVE MEGA MALL, MV" → "REDWAVE MEGA MALL") so branches of the
+ * same shop share one key. Must stay identical on client and server.
+ */
+export function normalizeMerchant(merchant) {
+  if (!merchant) return ''
+  return merchant
+    .toUpperCase()
+    .replace(/\s+/g, ' ')
+    .replace(/,\s*[A-Z]{2}\s*$/, '')
+    .trim()
+}
+
 /** Split pasted text into individual bank SMS messages. */
 export function splitBacklogMessages(text) {
   if (!text?.trim()) return []
