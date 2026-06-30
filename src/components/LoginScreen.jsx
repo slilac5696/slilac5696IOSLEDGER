@@ -13,6 +13,7 @@ export default function LoginScreen({ onLogin }) {
   const [mode, setMode] = useState(MODES.signin)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [currentPassword, setCurrentPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -24,6 +25,7 @@ export default function LoginScreen({ onLogin }) {
     setError('')
     setSuccess('')
     setConfirmPassword('')
+    setCurrentPassword('')
   }
 
   async function handleSubmit(e) {
@@ -55,8 +57,12 @@ export default function LoginScreen({ onLogin }) {
     }
 
     if (mode === MODES.reset) {
+      if (!currentPassword.trim()) {
+        setError('Enter your current password to change it.')
+        return
+      }
       if (!isValidPassword(trimmedPass)) {
-        setError('Password must be at least 6 characters.')
+        setError('New password must be at least 6 characters.')
         return
       }
       if (trimmedPass !== confirmPassword.trim()) {
@@ -74,9 +80,10 @@ export default function LoginScreen({ onLogin }) {
         const session = await signUp(trimmedUser, trimmedPass)
         onLogin(session, remember)
       } else if (mode === MODES.reset) {
-        await resetPassword(trimmedUser, trimmedPass)
+        await resetPassword(trimmedUser, currentPassword.trim(), trimmedPass)
         setSuccess('Password updated. You can sign in now.')
         setPassword('')
+        setCurrentPassword('')
         setConfirmPassword('')
         setMode(MODES.signin)
       }
@@ -90,7 +97,7 @@ export default function LoginScreen({ onLogin }) {
   const titles = {
     [MODES.signin]: 'Sign in',
     [MODES.signup]: 'Create account',
-    [MODES.reset]: 'Reset password',
+    [MODES.reset]: 'Change password',
   }
 
   return (
@@ -144,6 +151,21 @@ export default function LoginScreen({ onLogin }) {
               className="mt-1 w-full bg-transparent border-b border-stone-200 py-2 font-mono text-sm text-stone-900 focus:outline-none focus:border-teal-800"
             />
           </label>
+
+          {mode === MODES.reset && (
+            <label className="block mb-4">
+              <span className="font-mono text-xs uppercase tracking-wider text-stone-500">
+                Current password
+              </span>
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                autoComplete="current-password"
+                className="mt-1 w-full bg-transparent border-b border-stone-200 py-2 font-mono text-sm text-stone-900 focus:outline-none focus:border-teal-800"
+              />
+            </label>
+          )}
 
           <label className="block mb-4">
             <span className="font-mono text-xs uppercase tracking-wider text-stone-500">
@@ -214,7 +236,7 @@ export default function LoginScreen({ onLogin }) {
               onClick={() => switchMode(MODES.reset)}
               className="w-full mt-4 font-mono text-xs text-stone-500 underline underline-offset-2"
             >
-              Forgot password?
+              Change password
             </button>
           )}
 

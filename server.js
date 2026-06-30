@@ -9,6 +9,7 @@ import ingestByToken from './api/ingestByToken.js'
 import myIngestUrl from './api/myIngestUrl.js'
 import resetPasswordHandler from './api/resetPassword.js'
 import signupHandler from './api/signup.js'
+import { rateLimit } from './api/rateLimit.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const distIndex = join(__dirname, 'dist', 'index.html')
@@ -18,6 +19,7 @@ const PORT = process.env.PORT || 3000
 const HOST = process.env.HOST || '0.0.0.0'
 
 const app = express()
+app.set('trust proxy', 1)
 app.use(cors())
 app.use(
   express.json({
@@ -29,11 +31,13 @@ app.use(
 app.use(express.urlencoded({ extended: true }))
 app.use(express.text({ type: ['text/*', 'application/octet-stream'] }))
 
+const authLimiter = rateLimit({ windowMs: 15 * 60_000, max: 10, name: 'auth' })
+
 app.post('/api/ingest', ingestHandler)
 app.post('/api/i/:token', ingestByToken)
 app.get('/api/my-ingest-url', myIngestUrl)
-app.post('/api/reset-password', resetPasswordHandler)
-app.post('/api/signup', signupHandler)
+app.post('/api/reset-password', authLimiter, resetPasswordHandler)
+app.post('/api/signup', authLimiter, signupHandler)
 
 if (isProd) {
   app.use(express.static(join(__dirname, 'dist')))

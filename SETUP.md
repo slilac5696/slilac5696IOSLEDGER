@@ -185,6 +185,26 @@ The category name must match a category you created that month for the spend to
 roll up; otherwise the transaction stays Uncategorized and can be assigned by
 tapping it.
 
+## Security notes
+
+- **Password changes require the current password.** `/api/reset-password`
+  verifies the existing credentials (via a Supabase token grant) before setting
+  a new password, so knowing a username alone cannot take over an account. Wrong
+  username and wrong password return the same generic error to avoid revealing
+  which usernames exist. Because accounts are username-only (no email), there is
+  no self-service "forgot password" recovery by design.
+- **Rate limiting.** `/api/signup` and `/api/reset-password` are limited to 10
+  requests per IP per 15 minutes (`api/rateLimit.js`) to blunt brute force and
+  signup spam. Set `app.set('trust proxy', 1)` is enabled so the limiter sees
+  the real client IP behind Railway's proxy.
+- **Service role key** stays server-only (`SUPABASE_SERVICE_ROLE_KEY`, no
+  `VITE_` prefix) and is never bundled into the client.
+- **RLS everywhere.** Every table enables row level security. `ingest_tokens`
+  intentionally has RLS on with no client policy, so clients read zero rows and
+  only the ingest webhook (service role) can use it.
+- **Recommended dashboard setting:** enable Supabase Auth "leaked password
+  protection" (HaveIBeenPwned check) under Authentication → Policies.
+
 ## 6. App structure
 
 - **Budget tab** — income vs spent, zero-based progress bar, category list with
